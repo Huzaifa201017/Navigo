@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:navigo/ChooseDestPage.dart' ;
 
 class MapsPage extends StatelessWidget {
   const MapsPage({super.key});
@@ -14,8 +15,11 @@ class MapsPage extends StatelessWidget {
         child: Text('Maps Page'),
       ),
 
-      floatingActionButton: const FloatingActionButton(
-        onPressed: null,
+      floatingActionButton: FloatingActionButton(onPressed:(){
+          Navigator.push(context,
+              MaterialPageRoute(builder:(context) =>ChooseDestPage()));
+          }
+        ,
         child: Icon(Icons.directions),
       ),
     );

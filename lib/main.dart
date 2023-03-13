@@ -12,6 +12,7 @@ class FlutterApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: "Flutter Ap",
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.red),
       home:  HomePage(),
     );
