@@ -13,14 +13,13 @@ class ChooseDestPage extends StatelessWidget {
           children: [
             Row(mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('PREP:'),
-              Text('25 min'),
+              Text('Current Location'),
             ],
           ),
-            Row(
+            Row(mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('COOK:'),
-                Text('1 hr'),
+
+                Text('Search Destination'),
               ],
             ),],)
 

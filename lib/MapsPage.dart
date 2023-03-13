@@ -15,13 +15,25 @@ class MapsPage extends StatelessWidget {
         child: Text('Maps Page'),
       ),
 
-      floatingActionButton: FloatingActionButton(onPressed:(){
-          Navigator.push(context,
-              MaterialPageRoute(builder:(context) =>ChooseDestPage()));
+      floatingActionButton:Column(mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(onPressed:(){
+            Navigator.push(context,
+                MaterialPageRoute(builder:(context) =>ChooseDestPage()));
           }
-        ,
-        child: Icon(Icons.directions),
-      ),
+            ,
+            child: Text("zain"),
+          ),
+          SizedBox(height: 40),
+          FloatingActionButton(onPressed:(){
+            Navigator.push(context,
+                MaterialPageRoute(builder:(context) =>ChooseDestPage()));
+          }
+            ,
+            child: Icon(Icons.directions),
+          ),
+        ],
+      )
     );
   }
 }
