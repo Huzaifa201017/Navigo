@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:navigo/ChooseDestPage.dart';
 
 class MapsPage extends StatelessWidget {
   const MapsPage({super.key});
