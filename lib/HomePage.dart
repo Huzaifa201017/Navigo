@@ -4,6 +4,7 @@ import 'package:navigo/RoutesDetailsPage.dart';
 import 'package:navigo/SavedPlacesPage.dart';
 
 class HomePage extends StatefulWidget{
+
   @override
   State<StatefulWidget> createState() => HomePageState();
 
@@ -20,9 +21,9 @@ class HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-       MapsPage(),
-       SavedPlacesPage(),
-       RoutesDetailsPage()
+      const MapsPage(),
+      const SavedPlacesPage(),
+      const RoutesDetailsPage()
     ];
     return Scaffold(
 
