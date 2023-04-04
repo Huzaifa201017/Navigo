@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:navigo/FirebaseServices.dart';
 import 'package:navigo/SignUpPage.dart';
 
 class LoginPage extends StatefulWidget {
@@ -11,13 +12,12 @@ class _LoginPageState extends State<LoginPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -72,12 +72,40 @@ class _LoginPageState extends State<LoginPage> {
                       FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => Login()),)
-
                       ).onError((error, stackTrace) {
                         print("Error ${error.toString()}");
                       });
                     }
                   },
+                ),
+              ),
+              SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: Image.asset('assets/images/google.png', height: 24),
+                  label: Text('Login with Google'),
+                  onPressed: () {
+                    FirebaseServices().signInWithGoogle().then((user) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => Login()),
+                      );
+                    }).catchError((error) {
+                      print('Error signing in with Google: $error');
+                    });
+                  },
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white
+                    // shape: RoundedRectangleBorder(
+                    //   borderRadius: BorderRadius.circular(20),
+                    // ),
+                    // side: BorderSide(
+                    //   color: Colors.grey,
+                    //   width: 1,
+                    // ),
+                  ),
                 ),
               ),
               SizedBox(height: 16),
@@ -103,6 +131,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
 }
 
 class Login extends StatelessWidget {
