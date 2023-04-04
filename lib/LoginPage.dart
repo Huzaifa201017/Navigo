@@ -68,7 +68,6 @@ class _LoginPageState extends State<LoginPage> {
                   child: Text('Login'),
                   onPressed: () {
                     if (_formKey.currentState?.validate() ?? false) {
-
                       // Perform login functionality
                       FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) => Navigator.push(
                         context,

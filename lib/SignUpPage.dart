@@ -100,7 +100,6 @@ class _SignUpPageState extends State<SignUpPage> {
                             FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) => Navigator.pop(context)).onError((error, stackTrace) {
                               print("Error ${error.toString()}");
                             });
-
                           }
                         },
                       ),
