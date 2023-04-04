@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:navigo/FirebaseServices.dart';
 import 'package:navigo/SignUpPage.dart';
 
+import 'Toast.dart';
+
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -69,11 +71,14 @@ class _LoginPageState extends State<LoginPage> {
                   onPressed: () {
                     if (_formKey.currentState?.validate() ?? false) {
                       // Perform login functionality
-                      FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => Login()),)
-                      ).onError((error, stackTrace) {
+                      FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+                        Message().show("Success!");
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => Login()),);
+                      }).onError((error, stackTrace) {
                         print("Error ${error.toString()}");
+                        Message().show(error.toString());
                       });
                     }
                   },

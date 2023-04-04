@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'Toast.dart';
+
 class SignUpPage extends StatefulWidget {
   @override
   _SignUpPageState createState() => _SignUpPageState();
@@ -96,9 +98,12 @@ class _SignUpPageState extends State<SignUpPage> {
                         onPressed: () {
                           if (_formKey.currentState?.validate() ?? false) {
                             // Perform sign up functionality
-                            print("inside");
-                            FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) => Navigator.pop(context)).onError((error, stackTrace) {
+                              FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+                                Message().show("Registered Successfully!");
+                                Navigator.pop(context);
+                              }).onError((error, stackTrace) {
                               print("Error ${error.toString()}");
+                              Message().show(error.toString());
                             });
                           }
                         },
