@@ -15,8 +15,9 @@ class RoutesHandler {
   }
 
   List<LatLng> getStationCoordinates(List<Location> stations){
+
     List<LatLng> lats_langs = [];
-    for (int i=1 ; i< stations.length ; i++){
+    for (int i=0 ; i< stations.length ; i++) {
       lats_langs.add(stations[i].latts_longs);
     }
     return lats_langs;

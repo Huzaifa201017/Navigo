@@ -84,8 +84,10 @@ class MapsPageState extends State<MapsPage> {
   }
 
   void fillMarkers() {
+
     _marker.clear();
     for( int i=0 ; i < locationsToDisplay.length ; i++){
+
       if (locationsToDisplay[i].isYourLocation) {
 
         _marker.add(
@@ -109,6 +111,7 @@ class MapsPageState extends State<MapsPage> {
             position: locationsToDisplay[i].latts_longs,
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
+              snippet: locationsToDisplay[i].getStationTypesInString(),
               onTap: () => showActionSheet(context,""),
             ),
 
@@ -126,6 +129,7 @@ class MapsPageState extends State<MapsPage> {
             position: locationsToDisplay[i].latts_longs,
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
+              snippet: locationsToDisplay[i].getStationTypesInString(),
               onTap: () => showActionSheet(context,""),
             ),
 
@@ -142,6 +146,7 @@ class MapsPageState extends State<MapsPage> {
             position: locationsToDisplay[i].latts_longs,
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
+              snippet: locationsToDisplay[i].getStationTypesInString(),
               onTap: () => showActionSheet(context,""),
             ),
 
@@ -313,8 +318,9 @@ class MapsPageState extends State<MapsPage> {
 
   @override
   void initState()  {
+
     super.initState();
-    listenToLocationChanges();
+
 
     locationsToDisplay.addAll(rh.stations);
 
@@ -322,17 +328,18 @@ class MapsPageState extends State<MapsPage> {
     //   myIcon = onValue;
     // });
 
-    getUserCurrentLocation().then((value) async{
+    getUserCurrentLocation().then((value) async {
 
       print("Current location obtained: $value");
       userLoc = Location(LatLng(value.latitude, value.longitude), 'My Location',false,false,false,true);
       locationsToDisplay.insert(0,userLoc!);
-      fillMarkers();
-      setState(() {
 
+      setState(() {
+        fillMarkers();
       });
 
     });
+    // listenToLocationChanges();
 
 
 
@@ -452,7 +459,7 @@ class MapsPageState extends State<MapsPage> {
                   else{
 
                     setState(() {
-
+                      _isMapVisible = true;
                       this.ic = Icon(Icons.directions);
                       this._isPathComputed = false;
 
@@ -590,7 +597,7 @@ class BusStopListView extends StatelessWidget {
         return ListTile(
 
           //TODO: subtitle would be decided on the basis of boolean values in the Location Class
-          subtitle: Text("Metro Bus Station"),
+          subtitle: Text(busStops[index].getStationTypesInString()),
           title: Text(busStops[index].name),
           trailing: Icon(Icons.directions_bus),
 
