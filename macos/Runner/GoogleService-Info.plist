@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>617458806919-ds9i8ctgk3nturcm6i0d36d7iqoamn1s.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.617458806919-ds9i8ctgk3nturcm6i0d36d7iqoamn1s</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>617458806919-jq0h8beh7vgkd67tvalg6cql5muoqjpd.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAAOe-ZkEF7Tz9gg_Qiph37GMz8gzY2L20</string>
+	<key>GCM_SENDER_ID</key>
+	<string>617458806919</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.navigo</string>
+	<key>PROJECT_ID</key>
+	<string>navigo-55abb</string>
+	<key>STORAGE_BUCKET</key>
+	<string>navigo-55abb.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:617458806919:ios:acd35b0f82472f83750822</string>
+</dict>
+</plist>

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:navigo/FirebaseServices.dart';
+
 import 'package:navigo/SignUpPage.dart';
 
 import 'Toast.dart';
@@ -13,7 +14,68 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
+
+
   final _formKey = GlobalKey<FormState>();
+
+  Future<void> navigateToHomePage() async  {
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => Login(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> checkLoginStatus() async {
+    if(FirebaseAuth.instance.currentUser != null){
+      // store it the credentials , move to the home page
+      this._signOut();
+      await navigateToHomePage();
+    }
+  }
+
+  Future<void> login() async {
+
+    if (_formKey.currentState?.validate() ?? false) {
+      // Perform login functionality
+      FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+        Message().show("Success!");
+        navigateToHomePage();
+      }).onError((error, stackTrace) {
+        print("Error ${error.toString()}");
+        Message().show( 'Error signing in with Google: ' + error.toString() );
+      });
+    }
+  }
+
+  Future<void> loginWithGoogle() async {
+    FirebaseServices().signInWithGoogle().then((user) {
+      navigateToHomePage();
+    }).catchError((error) {
+      print('Error signing in with Google: ' + error.toString());
+    });
+  }
+
+  Future<void> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    checkLoginStatus();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,18 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: ElevatedButton(
                   child: Text('Login'),
                   onPressed: () {
-                    if (_formKey.currentState?.validate() ?? false) {
-                      // Perform login functionality
-                      FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
-                        Message().show("Success!");
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => Login()),);
-                      }).onError((error, stackTrace) {
-                        print("Error ${error.toString()}");
-                        Message().show(error.toString());
-                      });
-                    }
+                    //this.login();
                   },
                 ),
               ),
@@ -91,25 +142,13 @@ class _LoginPageState extends State<LoginPage> {
                   icon: Image.asset('assets/images/google.png', height: 24),
                   label: Text('Login with Google'),
                   onPressed: () {
-                    FirebaseServices().signInWithGoogle().then((user) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => Login()),
-                      );
-                    }).catchError((error) {
-                      print('Error signing in with Google: $error');
-                    });
+                    //this.loginWithGoogle();
                   },
+
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white
-                    // shape: RoundedRectangleBorder(
-                    //   borderRadius: BorderRadius.circular(20),
-                    // ),
-                    // side: BorderSide(
-                    //   color: Colors.grey,
-                    //   width: 1,
-                    // ),
+
                   ),
                 ),
               ),
