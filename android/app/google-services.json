@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "617458806919",
+    "project_id": "navigo-55abb",
+    "storage_bucket": "navigo-55abb.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:617458806919:android:c7d3e05671542169750822",
+        "android_client_info": {
+          "package_name": "com.example.navigo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "617458806919-jq0h8beh7vgkd67tvalg6cql5muoqjpd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.navigo",
+            "certificate_hash": "a788a6d8045cad0671d9d411dc643571319d3c1c"
+          }
+        },
+        {
+          "client_id": "617458806919-rlm3eaejlglmdq4el60ho0bi3i6umqju.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBY6Edl2J8S8WUUlNwSNAU5tvyzlQpjV20"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "617458806919-eivqr2kqbv469pjlevo2m25rl2e941ht.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
