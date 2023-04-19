@@ -17,8 +17,6 @@ class MapsPage extends StatefulWidget {
 }
 
 class MapsPageState extends State<MapsPage> {
-
-
   late GoogleMapController mapController;
   // icon for user location
   BitmapDescriptor? myIcon;
@@ -28,17 +26,13 @@ class MapsPageState extends State<MapsPage> {
   final LatLng _center = const LatLng(31.51214443738609, 74.37939589382803);
   String googleAPiKey = "AIzaSyApvWQgBKFUgwcJ91suH3wGogD4WhAa6WM";
   bool _isMapVisible = true, _isPathComputed = false;
-  Icon ic = Icon(Icons.directions);
+  Icon ic = const Icon(Icons.directions);
   Location? userLoc;
 
   Set<Polyline> _polylines = Set<Polyline>();
   List<Marker> _marker = [];
   List<LatLng> _busStops = [];
   List<Location> locationsToDisplay = [];
-
-
-
-
 
   // TODO: when zain will do his work
   // LatLng start , end , midway;
@@ -47,34 +41,38 @@ class MapsPageState extends State<MapsPage> {
   @override
   void dispose() {
     super.dispose();
+
     /// don't forget to cancel stream once no longer needed
     positionStream?.cancel();
   }
+
   void listenToLocationChanges() {
-    final LocationSettings locationSettings = LocationSettings(
+    const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.best,
       distanceFilter: 100,
     );
 
-    positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-          (Position? position) {
-        print(position==null? 'Unknown' : '$position');
+    positionStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+      (Position? position) {
+        print(position == null ? 'Unknown' : '$position');
 
-        if (position != null && userLoc != null){
-          if (position?.latitude != userLoc?.latts_longs.latitude && position?.longitude != userLoc?.latts_longs.longitude ){
+        if (position != null && userLoc != null) {
+          if (position?.latitude != userLoc?.latts_longs.latitude &&
+              position?.longitude != userLoc?.latts_longs.longitude) {
             setState(() {
-              userLoc!.latts_longs = LatLng(position!.latitude, position!.longitude);
+              userLoc!.latts_longs =
+                  LatLng(position!.latitude, position!.longitude);
               locationsToDisplay[0].latts_longs = userLoc!.latts_longs;
               fillMarkers();
             });
           }
         }
-
-
       },
     );
   }
-  Future<Position> getUserCurrentLocation() async{
+
+  Future<Position> getUserCurrentLocation() async {
     try {
       await Geolocator.requestPermission();
     } catch (e) {
@@ -84,80 +82,73 @@ class MapsPageState extends State<MapsPage> {
   }
 
   void fillMarkers() {
-
     _marker.clear();
-    for( int i=0 ; i < locationsToDisplay.length ; i++){
-
+    for (int i = 0; i < locationsToDisplay.length; i++) {
       if (locationsToDisplay[i].isYourLocation) {
-
         _marker.add(
           Marker(
-
             markerId: MarkerId('$i'),
             position: locationsToDisplay[i].latts_longs,
             // icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-            icon: myIcon==null ?BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue): myIcon!,
+            icon: myIcon == null
+                ? BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueBlue)
+                : myIcon!,
             consumeTapEvents: false,
           ),
         );
-
-      }else if (locationsToDisplay[i].isStartingPoint){
+      } else if (locationsToDisplay[i].isStartingPoint) {
         //Create the corresponding marker
 
         _marker.add(
           Marker(
-
             markerId: MarkerId('$i'),
             position: locationsToDisplay[i].latts_longs,
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
               snippet: locationsToDisplay[i].getStationTypesInString(),
-              onTap: () => showActionSheet(context,""),
+              onTap: () => showActionSheet(context, ""),
             ),
-
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon:
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
             consumeTapEvents: false,
           ),
         );
-
-      }else if(locationsToDisplay[i].isDestination){
+      } else if (locationsToDisplay[i].isDestination) {
         //Create the corresponding marker
         _marker.add(
           Marker(
-
             markerId: MarkerId('$i'),
             position: locationsToDisplay[i].latts_longs,
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
               snippet: locationsToDisplay[i].getStationTypesInString(),
-              onTap: () => showActionSheet(context,""),
+              onTap: () => showActionSheet(context, ""),
             ),
-
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon:
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
             consumeTapEvents: false,
           ),
         );
-
-      }else if (locationsToDisplay[i].isTrain || locationsToDisplay[i].isMetro || locationsToDisplay[i].isSpeedo){
+      } else if (locationsToDisplay[i].isTrain ||
+          locationsToDisplay[i].isMetro ||
+          locationsToDisplay[i].isSpeedo) {
         _marker.add(
           Marker(
-
             markerId: MarkerId('$i'),
             position: locationsToDisplay[i].latts_longs,
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
               snippet: locationsToDisplay[i].getStationTypesInString(),
-              onTap: () => showActionSheet(context,""),
+              onTap: () => showActionSheet(context, ""),
             ),
-
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon:
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
             consumeTapEvents: false,
           ),
         );
       }
-
     }
-
   }
 
   void fillPolyLines() {
@@ -174,7 +165,7 @@ class MapsPageState extends State<MapsPage> {
     mapController = controller;
   }
 
-  void showPageForSearchingMidWay(){
+  void showPageForSearchingMidWay() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -199,7 +190,7 @@ class MapsPageState extends State<MapsPage> {
                     child: TextField(
                       decoration: InputDecoration(
                           contentPadding:
-                          const EdgeInsets.fromLTRB(10, 10, 10, 5),
+                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
                           hintText: "Your Location",
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20.0),
@@ -217,7 +208,7 @@ class MapsPageState extends State<MapsPage> {
                     child: TextField(
                       decoration: InputDecoration(
                           contentPadding:
-                          const EdgeInsets.fromLTRB(10, 10, 10, 5),
+                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
                           hintText: "Insert Mid points",
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20.0),
@@ -235,7 +226,7 @@ class MapsPageState extends State<MapsPage> {
                     child: TextField(
                       decoration: InputDecoration(
                           contentPadding:
-                          const EdgeInsets.fromLTRB(10, 10, 10, 5),
+                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
                           hintText: "Search Destination",
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20.0),
@@ -247,13 +238,11 @@ class MapsPageState extends State<MapsPage> {
                     ),
                   ),
                 ],
-              )
-          )
-      ),
+              ))),
     );
   }
 
-  void showPageForSearchingTerminalLocations(){
+  void showPageForSearchingTerminalLocations() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -278,11 +267,10 @@ class MapsPageState extends State<MapsPage> {
                     child: TextField(
                       decoration: InputDecoration(
                           contentPadding:
-                          const EdgeInsets.fromLTRB(10, 10, 10, 5),
+                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
                           hintText: "Your Location",
                           border: OutlineInputBorder(
-                            borderRadius:
-                            BorderRadius.circular(20.0),
+                            borderRadius: BorderRadius.circular(20.0),
                           ),
                           suffixIcon: IconButton(
                             onPressed: () {},
@@ -297,11 +285,10 @@ class MapsPageState extends State<MapsPage> {
                     child: TextField(
                       decoration: InputDecoration(
                           contentPadding:
-                          const EdgeInsets.fromLTRB(10, 10, 10, 5),
+                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
                           hintText: "Search Destination",
                           border: OutlineInputBorder(
-                            borderRadius:
-                            BorderRadius.circular(20.0),
+                            borderRadius: BorderRadius.circular(20.0),
                           ),
                           suffixIcon: IconButton(
                             onPressed: () {},
@@ -310,17 +297,13 @@ class MapsPageState extends State<MapsPage> {
                     ),
                   ),
                 ],
-              )
-          )
-      ),
+              ))),
     );
   }
 
   @override
-  void initState()  {
-
+  void initState() {
     super.initState();
-
 
     locationsToDisplay.addAll(rh.stations);
 
@@ -329,28 +312,21 @@ class MapsPageState extends State<MapsPage> {
     // });
 
     getUserCurrentLocation().then((value) async {
-
       print("Current location obtained: $value");
-      userLoc = Location(LatLng(value.latitude, value.longitude), 'My Location',false,false,false,true);
-      locationsToDisplay.insert(0,userLoc!);
+      userLoc = Location(LatLng(value.latitude, value.longitude), 'My Location',
+          false, false, false, true);
+      locationsToDisplay.insert(0, userLoc!);
 
       setState(() {
         fillMarkers();
       });
-
     });
     // listenToLocationChanges();
-
-
-
   }
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
         appBar: null,
         body: Stack(
           children: [
@@ -361,11 +337,10 @@ class MapsPageState extends State<MapsPage> {
               child: Visibility(
                 visible: _isMapVisible,
                 child: GoogleMap(
-
                   onMapCreated: _onMapCreated,
                   mapType: MapType.normal,
                   initialCameraPosition: CameraPosition(
-                    target: userLoc != null? userLoc!.latts_longs: _center,
+                    target: userLoc != null ? userLoc!.latts_longs : _center,
                     zoom: 15.0,
                   ),
                   markers: Set<Marker>.of(_marker),
@@ -395,8 +370,7 @@ class MapsPageState extends State<MapsPage> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                   child: const DropdownButtonHideUnderline(
                     child: const DropDown(),
-                  )
-              ),
+                  )),
             ),
             // List View
 
@@ -404,13 +378,15 @@ class MapsPageState extends State<MapsPage> {
               opacity: !_isMapVisible ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 500),
               child: Visibility(
-                  visible: !_isMapVisible,
-
-                  child: Container(
-                    padding: EdgeInsets.all(10),
-                    margin: EdgeInsets.fromLTRB(0, 80, 0, 0),
-                    child: BusStopListView(busStops: locationsToDisplay.getRange(1, locationsToDisplay.length).toList()),
-                  ),
+                visible: !_isMapVisible,
+                child: Container(
+                  padding: EdgeInsets.all(10),
+                  margin: EdgeInsets.fromLTRB(0, 80, 0, 0),
+                  child: BusStopListView(
+                      busStops: locationsToDisplay
+                          .getRange(1, locationsToDisplay.length)
+                          .toList()),
+                ),
               ),
             ),
 
@@ -430,8 +406,9 @@ class MapsPageState extends State<MapsPage> {
                     //-------temporary-----
 
                     this.locationsToDisplay.clear();
-                    if (userLoc != null){                      // temporary
-                      this.locationsToDisplay.add(userLoc!);  // temporary
+                    if (userLoc != null) {
+                      // temporary
+                      this.locationsToDisplay.add(userLoc!); // temporary
                       this.locationsToDisplay.addAll(rh.getComputedPath());
                     }
 
@@ -442,86 +419,67 @@ class MapsPageState extends State<MapsPage> {
                 },
               ),
             ),
-
           ],
         ),
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-
             FloatingActionButton(
-                onPressed: () {
+              onPressed: () {
+                if (!_isPathComputed) {
+                  this.showPageForSearchingMidWay();
+                } else {
+                  setState(() {
+                    _isMapVisible = true;
+                    this.ic = Icon(Icons.directions);
+                    this._isPathComputed = false;
 
-                  if(!_isPathComputed) {
-                    this.showPageForSearchingMidWay();
+                    this.locationsToDisplay.clear();
+                    if (userLoc != null) {
+                      this.locationsToDisplay.add(userLoc!);
+                    }
+                    this.locationsToDisplay.addAll(rh.stations);
 
-                  }
-                  else{
+                    fillMarkers();
+                    _polylines.clear();
 
-                    setState(() {
-                      _isMapVisible = true;
-                      this.ic = Icon(Icons.directions);
-                      this._isPathComputed = false;
+                    // random code just to test , whether changing something in list , reflect change on the UI or not
 
-                      this.locationsToDisplay.clear();
-                      if (userLoc != null){
-                        this.locationsToDisplay.add(userLoc!);
-                      }
-                      this.locationsToDisplay.addAll(rh.stations) ;
-
-
-                      fillMarkers();
-                      _polylines.clear();
-
-                      // random code just to test , whether changing something in list , reflect change on the UI or not
-
-                      // this.locationsToDisplay.removeAt(0);
-                      // this._busStops.removeAt(0);
-                      // fillMarkers();
-                      // fillPolyLines();
-
-                    });
-                  }
-                },
-                foregroundColor: !_isPathComputed ? Colors.white : Colors.green,
-                backgroundColor: !_isPathComputed ? Colors.red : Colors.white ,
-                elevation: 10,
-                child: Icon(!_isPathComputed ? Icons.list : Icons.done_outline_outlined),
+                    // this.locationsToDisplay.removeAt(0);
+                    // this._busStops.removeAt(0);
+                    // fillMarkers();
+                    // fillPolyLines();
+                  });
+                }
+              },
+              foregroundColor: !_isPathComputed ? Colors.white : Colors.green,
+              backgroundColor: !_isPathComputed ? Colors.red : Colors.white,
+              elevation: 10,
+              child: Icon(
+                  !_isPathComputed ? Icons.list : Icons.done_outline_outlined),
             ),
-
-
             const SizedBox(height: 40),
-
-
             FloatingActionButton(
               onPressed: () {
                 if (!_isPathComputed) {
                   this.showPageForSearchingTerminalLocations();
-
-                }
-                else{
+                } else {
                   setState(() {
                     _isMapVisible = !_isMapVisible;
-                    if(_isMapVisible){
+                    if (_isMapVisible) {
                       ic = Icon(Icons.list);
-                    }else{
+                    } else {
                       ic = Icon(Icons.map);
                     }
-
                   });
-
                 }
               },
               child: ic,
             ),
-
           ],
         ));
   }
 }
-
-
-
 
 class DropDown extends StatefulWidget {
   const DropDown({super.key});
@@ -582,7 +540,6 @@ class DropDownState extends State<DropDown> {
 }
 
 class BusStopListView extends StatelessWidget {
-
   final List<Location> busStops;
 
   BusStopListView({required this.busStops}) {}
@@ -590,39 +547,35 @@ class BusStopListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+        itemCount: busStops.length,
+        itemBuilder: (BuildContext context, int index) {
+          return ListTile(
+            //TODO: subtitle would be decided on the basis of boolean values in the Location Class
+            subtitle: Text(busStops[index].getStationTypesInString()),
+            title: Text(busStops[index].name),
+            trailing: Icon(Icons.directions_bus),
 
-      itemCount: busStops.length,
+            tileColor: Colors.white,
 
-      itemBuilder: (BuildContext context, int index) {
-        return ListTile(
-
-          //TODO: subtitle would be decided on the basis of boolean values in the Location Class
-          subtitle: Text(busStops[index].getStationTypesInString()),
-          title: Text(busStops[index].name),
-          trailing: Icon(Icons.directions_bus),
-
-          tileColor: Colors.white,
-
-          onTap: () {
-            _launchUrl(busStops[index].latts_longs.latitude, busStops[index].latts_longs.longitude);
-          },
-          splashColor: Colors.grey,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: Colors.grey, width: 1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-        );
-      },
-
-      separatorBuilder: (context, index) => SizedBox(
-        height: 10,
-      )
-    );
+            onTap: () {
+              _launchUrl(busStops[index].latts_longs.latitude,
+                  busStops[index].latts_longs.longitude);
+            },
+            splashColor: Colors.grey,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Colors.grey, width: 1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+          );
+        },
+        separatorBuilder: (context, index) => SizedBox(
+              height: 10,
+            ));
   }
 
-  Future<void> _launchUrl(double latitude , double longitude) async {
-
-    String googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+  Future<void> _launchUrl(double latitude, double longitude) async {
+    String googleMapsUrl =
+        'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
     if (await canLaunch(googleMapsUrl)) {
       await launch(
         googleMapsUrl,
@@ -634,9 +587,7 @@ class BusStopListView extends StatelessWidget {
       throw 'Could not open the map.';
     }
   }
-
 }
-
 
 void showActionSheet(BuildContext context, String busStopName) {
   showModalBottomSheet<void>(
@@ -647,11 +598,11 @@ void showActionSheet(BuildContext context, String busStopName) {
 
       title: Text(
         'Station',
-        style: TextStyle(fontSize: 20,color: Colors.black54),
+        style: TextStyle(fontSize: 20, color: Colors.black54),
       ),
       message: const Text(
         'Do you want to save or open it on Google Maps?',
-        style: TextStyle(fontSize: 15,color:Colors.black54),
+        style: TextStyle(fontSize: 15, color: Colors.black54),
       ),
       cancelButton: CupertinoActionSheetAction(
         onPressed: () {
@@ -685,4 +636,3 @@ void showActionSheet(BuildContext context, String busStopName) {
     ),
   );
 }
-
