@@ -4,7 +4,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:navigo/Class/RoutesHandler.dart';
 import 'package:navigo/Class/Location.dart';
 import 'package:geolocator/geolocator.dart';
@@ -369,7 +368,7 @@ class MapsPageState extends State<MapsPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                   child: const DropdownButtonHideUnderline(
-                    child: const DropDown(),
+                    child: DropDown(),
                   )),
             ),
             // List View
@@ -392,24 +391,24 @@ class MapsPageState extends State<MapsPage> {
 
             // Button(when pressed , the path will be computed and updates will happen in the locations),(Temporary)
             Container(
-              margin: EdgeInsets.fromLTRB(0, 300, 0, 0),
+              margin: const EdgeInsets.fromLTRB(0, 300, 0, 0),
               child: CupertinoButton(
                 color: Colors.blue,
-                child: Text("Temp"),
+                child: const Text("Temp"),
                 onPressed: () {
                   setState(() {
-                    this.ic = Icon(Icons.list);
-                    this._isPathComputed = true;
+                    ic = const Icon(Icons.list);
+                    _isPathComputed = true;
 
                     //TODO: Checks whether user have selected all the options for path computation
                     //TODO: apply the algo correspondingly , update the bus stops/stations
                     //-------temporary-----
 
-                    this.locationsToDisplay.clear();
+                    locationsToDisplay.clear();
                     if (userLoc != null) {
                       // temporary
-                      this.locationsToDisplay.add(userLoc!); // temporary
-                      this.locationsToDisplay.addAll(rh.getComputedPath());
+                      locationsToDisplay.add(userLoc!); // temporary
+                      locationsToDisplay.addAll(rh.getComputedPath());
                     }
 
                     _busStops = rh.getStationCoordinates(locationsToDisplay);
@@ -427,18 +426,18 @@ class MapsPageState extends State<MapsPage> {
             FloatingActionButton(
               onPressed: () {
                 if (!_isPathComputed) {
-                  this.showPageForSearchingMidWay();
+                  showPageForSearchingMidWay();
                 } else {
                   setState(() {
                     _isMapVisible = true;
-                    this.ic = Icon(Icons.directions);
-                    this._isPathComputed = false;
+                    ic = const Icon(Icons.directions);
+                    _isPathComputed = false;
 
-                    this.locationsToDisplay.clear();
+                    locationsToDisplay.clear();
                     if (userLoc != null) {
-                      this.locationsToDisplay.add(userLoc!);
+                      locationsToDisplay.add(userLoc!);
                     }
-                    this.locationsToDisplay.addAll(rh.stations);
+                    locationsToDisplay.addAll(rh.stations);
 
                     fillMarkers();
                     _polylines.clear();
