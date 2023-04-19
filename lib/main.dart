@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:navigo/LoginPage.dart';
 import 'firebase_options.dart';
-import 'package:navigo/HomePage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +20,7 @@ class FlutterApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: "Flutter App",
       theme: ThemeData(primarySwatch: Colors.red),
-      home: LoginPage(),
+      home: HomePage(),
     );
   }
 }

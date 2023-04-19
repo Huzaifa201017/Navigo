@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:navigo/FirebaseServices.dart';
-
+import 'package:navigo/HomePage.dart';
 import 'package:navigo/SignUpPage.dart';
 
 import 'Toast.dart';
@@ -15,14 +15,13 @@ class _LoginPageState extends State<LoginPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
-
   final _formKey = GlobalKey<FormState>();
 
-  Future<void> navigateToHomePage() async  {
+  Future<void> navigateToHomePage() async {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => Login(),
+        pageBuilder: (context, animation, secondaryAnimation) => HomePage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(
@@ -37,23 +36,25 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> checkLoginStatus() async {
-    if(FirebaseAuth.instance.currentUser != null){
+    if (FirebaseAuth.instance.currentUser != null) {
       // store it the credentials , move to the home page
-      this._signOut();
+      _signOut();
       await navigateToHomePage();
     }
   }
 
   Future<void> login() async {
-
     if (_formKey.currentState?.validate() ?? false) {
       // Perform login functionality
-      FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+      FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+              email: emailController.text, password: passwordController.text)
+          .then((value) {
         Message().show("Success!");
         navigateToHomePage();
       }).onError((error, stackTrace) {
         print("Error ${error.toString()}");
-        Message().show( 'Error signing in with Google: ' + error.toString() );
+        Message().show('Error signing in with Google: ' + error.toString());
       });
     }
   }
@@ -131,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: ElevatedButton(
                   child: Text('Login'),
                   onPressed: () {
-                    //this.login();
+                    this.login();
                   },
                 ),
               ),
@@ -142,14 +143,11 @@ class _LoginPageState extends State<LoginPage> {
                   icon: Image.asset('assets/images/google.png', height: 24),
                   label: Text('Login with Google'),
                   onPressed: () {
-                    //this.loginWithGoogle();
+                    this.loginWithGoogle();
                   },
-
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white
-
-                  ),
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white),
                 ),
               ),
               SizedBox(height: 16),
@@ -175,7 +173,6 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
-
 }
 
 class Login extends StatelessWidget {
