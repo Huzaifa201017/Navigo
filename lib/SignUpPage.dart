@@ -18,97 +18,182 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-
-          ClipPath(
-            clipper: _SignUpClipper(),
-            child: Container(
-              color: Colors.white,
-              padding: EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Create Account!',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.redAccent[700],
-                      ),
-                    ),
-                    SizedBox(height: 24),
-                    TextFormField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Full Name',
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) {
-                          return 'Please enter your name';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email),
-                      ),
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) {
-                          return 'Please enter your email';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    TextFormField(
-                      obscureText: true,
-                      controller: passwordController,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock),
-                      ),
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) {
-                          return 'Please enter your password';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        child: Text('Sign Up'),
-                        onPressed: () {
-                          if (_formKey.currentState?.validate() ?? false) {
-                            // Perform sign up functionality
-                              FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
-                                Message().show("Registered Successfully!");
-                                Navigator.pop(context);
-                              }).onError((error, stackTrace) {
-                              print("Error ${error.toString()}");
-                              Message().show(error.toString());
-                            });
-                          }
-                        },
-                      ),
-                    ),
-                  ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding:EdgeInsets.fromLTRB(20, 50, 20, 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset('assets/images/logo.png', width: 200, height: 200),
+                // Text(
+                //   'Welcome To Navigo!',
+                //   style: TextStyle(
+                //     fontSize: 32,
+                //     fontWeight: FontWeight.bold,
+                //     color: Colors.redAccent[700],
+                //   ),
+                // ),
+                TextFormField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Full Name',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Please enter your name';
+                    }
+                    return null;
+                  },
                 ),
-              ),
+                SizedBox(height: 16),
+                TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Please enter your email';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+                TextFormField(
+                  obscureText: true,
+                  controller: passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Please enter your password';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    child: Text('Sign Up'),
+                    onPressed: () {
+                      if (_formKey.currentState?.validate() ?? false) {
+                        // Perform sign up functionality
+                        FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+                          Message().show("Registered Successfully!");
+                          Navigator.pop(context);
+                        }).onError((error, stackTrace) {
+                          print("Error ${error.toString()}");
+                          Message().show(error.toString());
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        )
+
+        // child: Stack(
+        //   children: [
+        //
+        //     ClipPath(
+        //       clipper: _SignUpClipper(),
+        //       child: Container(
+        //         color: Colors.white,
+        //         padding: EdgeInsets.all(24),
+        //         child: Form(
+        //           key: _formKey,
+        //           child: Column(
+        //             mainAxisAlignment: MainAxisAlignment.center,
+        //             children: [
+        //               Image.asset('assets/images/logo.png', width: 200, height: 200),
+        //               // Text(
+        //               //   'Welcome To Navigo!',
+        //               //   style: TextStyle(
+        //               //     fontSize: 32,
+        //               //     fontWeight: FontWeight.bold,
+        //               //     color: Colors.redAccent[700],
+        //               //   ),
+        //               // ),
+        //               TextFormField(
+        //                 controller: nameController,
+        //                 decoration: InputDecoration(
+        //                   labelText: 'Full Name',
+        //                   prefixIcon: Icon(Icons.person),
+        //                 ),
+        //                 validator: (value) {
+        //                   if (value?.isEmpty ?? true) {
+        //                     return 'Please enter your name';
+        //                   }
+        //                   return null;
+        //                 },
+        //               ),
+        //               SizedBox(height: 16),
+        //               TextFormField(
+        //                 controller: emailController,
+        //                 keyboardType: TextInputType.emailAddress,
+        //                 decoration: InputDecoration(
+        //                   labelText: 'Email',
+        //                   prefixIcon: Icon(Icons.email),
+        //                 ),
+        //                 validator: (value) {
+        //                   if (value?.isEmpty ?? true) {
+        //                     return 'Please enter your email';
+        //                   }
+        //                   return null;
+        //                 },
+        //               ),
+        //               SizedBox(height: 16),
+        //               TextFormField(
+        //                 obscureText: true,
+        //                 controller: passwordController,
+        //                 decoration: InputDecoration(
+        //                   labelText: 'Password',
+        //                   prefixIcon: Icon(Icons.lock),
+        //                 ),
+        //                 validator: (value) {
+        //                   if (value?.isEmpty ?? true) {
+        //                     return 'Please enter your password';
+        //                   }
+        //                   return null;
+        //                 },
+        //               ),
+        //               SizedBox(height: 24),
+        //               SizedBox(
+        //                 width: double.infinity,
+        //                 child: ElevatedButton(
+        //                   child: Text('Sign Up'),
+        //                   onPressed: () {
+        //                     if (_formKey.currentState?.validate() ?? false) {
+        //                       // Perform sign up functionality
+        //                       FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+        //                         Message().show("Registered Successfully!");
+        //                         Navigator.pop(context);
+        //                       }).onError((error, stackTrace) {
+        //                         print("Error ${error.toString()}");
+        //                         Message().show(error.toString());
+        //                       });
+        //                     }
+        //                   },
+        //                 ),
+        //               ),
+        //             ],
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //   ],
+        // ),
+      )
     );
   }
 }

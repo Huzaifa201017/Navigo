@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:navigo/FirebaseServices.dart';
 import 'package:navigo/HomePage.dart';
 import 'package:navigo/SignUpPage.dart';
-
+import 'package:page_transition/page_transition.dart';
+import 'package:navigo/Class/Traveller.dart';
 import 'Toast.dart';
 
 class LoginPage extends StatefulWidget {
@@ -18,38 +19,22 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
   Future<void> navigateToHomePage() async {
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => HomePage(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          );
-        },
-      ),
-    );
+   Navigator.pushReplacement(context, PageTransition(child: HomePage(), type: PageTransitionType.bottomToTopPop, childCurrent: this.widget, duration: Duration(seconds: 0,milliseconds: 500)));
   }
 
-  Future<void> checkLoginStatus() async {
-    if (FirebaseAuth.instance.currentUser != null) {
-      // store it the credentials , move to the home page
-      _signOut();
-      await navigateToHomePage();
-    }
-  }
+  // Future<void> checkLoginStatus() async {
+  //   if (FirebaseAuth.instance.currentUser != null) {
+  //     // store it the credentials , move to the home page
+  //     await navigateToHomePage();
+  //   }
+  // }
 
   Future<void> login() async {
     if (_formKey.currentState?.validate() ?? false) {
       // Perform login functionality
-      FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-              email: emailController.text, password: passwordController.text)
-          .then((value) {
+      FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+        Traveller u = Traveller.Instance(value.user!.uid);
+        // print("User id: "+u.id+" "+value.user!.uid);
         Message().show("Success!");
         navigateToHomePage();
       }).onError((error, stackTrace) {
@@ -61,6 +46,10 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> loginWithGoogle() async {
     FirebaseServices().signInWithGoogle().then((user) {
+
+      Traveller.Instance(FirebaseAuth.instance.currentUser!.uid);
+
+      Message().show("Success!");
       navigateToHomePage();
     }).catchError((error) {
       print('Error signing in with Google: ' + error.toString());
@@ -74,103 +63,111 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    checkLoginStatus();
+    //checkLoginStatus();
+    // if (FirebaseAuth.instance.currentUser != null) {
+    //   // store it the credentials , move to the home page
+    //   _signOut();
+    // }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Padding(
-        padding: EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Text(
-                'Welcome To Navigo!',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.redAccent[700],
-                ),
-              ),
-              SizedBox(height: 24),
-              TextFormField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email),
-                ),
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Please enter your email';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 16),
-              TextFormField(
-                obscureText: true,
-                controller: passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Please enter your password';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  child: Text('Login'),
-                  onPressed: () {
-                    this.login();
+      body:SingleChildScrollView(
+        child:  Padding(
+          padding: EdgeInsets.fromLTRB(20, 50, 20, 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Image.asset('assets/images/logo.png', width: 200, height: 200),
+                // Text(
+                //   'Welcome To Navigo!',
+                //   style: TextStyle(
+                //     fontSize: 32,
+                //     fontWeight: FontWeight.bold,
+                //     color: Colors.redAccent[700],
+                //   ),
+                // ),
+                TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Please enter your email';
+                    }
+                    return null;
                   },
                 ),
-              ),
-              SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: Image.asset('assets/images/google.png', height: 24),
-                  label: Text('Login with Google'),
-                  onPressed: () {
-                    this.loginWithGoogle();
+                SizedBox(height: 16),
+                TextFormField(
+                  obscureText: true,
+                  controller: passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Please enter your password';
+                    }
+                    return null;
                   },
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white),
                 ),
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("Don't have an account?"),
-                  SizedBox(width: 4),
-                  TextButton(
-                    child: Text('Sign Up'),
+                SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    child: Text('Login'),
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => SignUpPage()),
-                      );
+                      this.login();
                     },
                   ),
-                ],
-              ),
-            ],
+                ),
+                SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: Image.asset('assets/images/google.png', height: 24),
+                    label: Text('Login with Google'),
+                    onPressed: () {
+                      this.loginWithGoogle();
+
+                    },
+                    style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Don't have an account?"),
+                    SizedBox(width: 4),
+                    TextButton(
+                      child: Text('Sign Up'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => SignUpPage()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+      )
+
     );
   }
 }

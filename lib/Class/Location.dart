@@ -5,6 +5,8 @@ class Location{
   LatLng latts_longs;
   String name;
   bool isMetro , isSpeedo , isTrain, isYourLocation, isDestination, isStartingPoint;
+  Set<int> route_num = {};
+  double distance=0.0;
 
   Location(this.latts_longs ,this.name,[this.isMetro=false , this.isSpeedo=false , this.isTrain=false, this.isYourLocation=false, this.isDestination=false, this.isStartingPoint=false]);
 
@@ -30,5 +32,15 @@ class Location{
     }
     type = type.substring(0,type.length-1);  // remove redundant /n from the end
     return type;
+  }
+
+  void Print(){
+    String temp  = this.name+ " "+ this.latts_longs.latitude.toString() +" "+ this.latts_longs.longitude.toString()+" "+this.isMetro.toString() + " "+ this.isSpeedo.toString()+ " "+ this.isTrain.toString();
+    if (this.route_num.length != 0){
+      this.route_num.forEach((num) {
+        temp += " " + num.toString();
+      });
+    }
+    print(temp);
   }
 }

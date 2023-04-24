@@ -1,0 +1,11 @@
+Lattitude  Longitue  LocationName  isMetro  isSpeedo  isTrain  StationRouteNum(For Speedo)
+31.615368 74.290548 7 true true false 1 
+31.615368 74.290548 1 true false false 
+31.615328 74.29248 2 true true true 2 
+31.6342368 74.2234248 3 true true true 2 
+32.6135368 75.2904548 4 true true true 2 
+31.615368 74.290548 5 false true true 1 2 
+31.6342368 74.2234248 6 false false true 
+31.615368 74.290548 8 false true false 1 
+31.615368 74.290548 9 false true false 1 
+31.615368 74.290548 10 false true false 1 2 

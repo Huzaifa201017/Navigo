@@ -21,16 +21,16 @@ class MapsPageState extends State<MapsPage> {
   BitmapDescriptor? myIcon;
   StreamSubscription<Position>? positionStream;
 
+
   RoutesHandler rh = RoutesHandler();
   final LatLng _center = const LatLng(31.51214443738609, 74.37939589382803);
-  String googleAPiKey = "AIzaSyApvWQgBKFUgwcJ91suH3wGogD4WhAa6WM";
   bool _isMapVisible = true, _isPathComputed = false;
   Icon ic = const Icon(Icons.directions);
   Location? userLoc;
 
   Set<Polyline> _polylines = Set<Polyline>();
   List<Marker> _marker = [];
-  List<LatLng> _busStops = [];
+  // List<LatLng> _busStops = [];
   List<Location> locationsToDisplay = [];
 
   // TODO: when zain will do his work
@@ -132,6 +132,7 @@ class MapsPageState extends State<MapsPage> {
       } else if (locationsToDisplay[i].isTrain ||
           locationsToDisplay[i].isMetro ||
           locationsToDisplay[i].isSpeedo) {
+
         _marker.add(
           Marker(
             markerId: MarkerId('$i'),
@@ -152,12 +153,27 @@ class MapsPageState extends State<MapsPage> {
 
   void fillPolyLines() {
     _polylines.clear();
-    _polylines.add(Polyline(
-      polylineId: PolylineId('route'),
-      color: Colors.blue,
-      width: 4,
-      points: _busStops,
-    ));
+
+    for (int i=0 ; i < locationsToDisplay.length-1 ; i++){
+        _polylines.add(Polyline(
+          polylineId: PolylineId('$i'),
+          color: Colors.blue,
+          width: 4,
+          points: [locationsToDisplay[i].latts_longs ,locationsToDisplay[i+1].latts_longs ],
+          consumeTapEvents: true,
+          onTap: () {
+            print(locationsToDisplay[i].name + " " + locationsToDisplay[i+1].name);
+            rh.getDistance(locationsToDisplay[i].latts_longs, locationsToDisplay[i+1].latts_longs);
+          },
+        )
+      );
+    }
+    // _polylines.add(Polyline(
+    //   polylineId: PolylineId('route'),
+    //   color: Colors.blue,
+    //   width: 4,
+    //   points: _busStops,
+    // ));
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -396,7 +412,7 @@ class MapsPageState extends State<MapsPage> {
                 color: Colors.blue,
                 child: const Text("Temp"),
                 onPressed: () {
-                  setState(() {
+                  setState(()  {
                     ic = const Icon(Icons.list);
                     _isPathComputed = true;
 
@@ -411,9 +427,11 @@ class MapsPageState extends State<MapsPage> {
                       locationsToDisplay.addAll(rh.getComputedPath());
                     }
 
-                    _busStops = rh.getStationCoordinates(locationsToDisplay);
                     fillMarkers();
                     fillPolyLines();
+
+                    rh.readAdjacencyList();
+                    //rh.Print();
                   });
                 },
               ),
@@ -424,11 +442,14 @@ class MapsPageState extends State<MapsPage> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             FloatingActionButton(
+              heroTag: "btn1",
               onPressed: () {
                 if (!_isPathComputed) {
                   showPageForSearchingMidWay();
-                } else {
+                }
+                else {
                   setState(() {
+                     rh.graph.clear();
                     _isMapVisible = true;
                     ic = const Icon(Icons.directions);
                     _isPathComputed = false;
@@ -459,10 +480,12 @@ class MapsPageState extends State<MapsPage> {
             ),
             const SizedBox(height: 40),
             FloatingActionButton(
+              heroTag: "btn2",
               onPressed: () {
                 if (!_isPathComputed) {
                   this.showPageForSearchingTerminalLocations();
-                } else {
+                }
+                else {
                   setState(() {
                     _isMapVisible = !_isMapVisible;
                     if (_isMapVisible) {
@@ -546,6 +569,7 @@ class BusStopListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+
         itemCount: busStops.length,
         itemBuilder: (BuildContext context, int index) {
           return ListTile(
