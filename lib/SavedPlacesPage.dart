@@ -10,10 +10,12 @@ class SavedPlacesPage extends StatefulWidget {
 
 class _State extends State<SavedPlacesPage> {
   final Traveller user = Traveller.Instance();
+
   @override
   void initState() {
     super.initState();
     print("User id: "+user.id);
+
   }
   @override
   Widget build(BuildContext context) {

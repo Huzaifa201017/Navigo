@@ -1,14 +1,14 @@
 import 'package:google_maps_flutter_platform_interface/src/types/location.dart';
 
 
-class Location{
+class StopLocation{
   LatLng latts_longs;
   String name;
   bool isMetro , isSpeedo , isTrain, isYourLocation, isDestination, isStartingPoint;
-  Set<int> route_num = {};
+  int route_num = -1;
   double distance=0.0;
 
-  Location(this.latts_longs ,this.name,[this.isMetro=false , this.isSpeedo=false , this.isTrain=false, this.isYourLocation=false, this.isDestination=false, this.isStartingPoint=false]);
+  StopLocation(this.latts_longs ,this.name,[this.isMetro=false , this.isSpeedo=false , this.isTrain=false, this.isYourLocation=false, this.isDestination=false, this.isStartingPoint=false]);
 
   String getStationTypesInString(){
     String type = "";
@@ -36,10 +36,8 @@ class Location{
 
   void Print(){
     String temp  = this.name+ " "+ this.latts_longs.latitude.toString() +" "+ this.latts_longs.longitude.toString()+" "+this.isMetro.toString() + " "+ this.isSpeedo.toString()+ " "+ this.isTrain.toString();
-    if (this.route_num.length != 0){
-      this.route_num.forEach((num) {
-        temp += " " + num.toString();
-      });
+    if (this.route_num != -1){
+      temp += " "+ this.route_num.toString();
     }
     print(temp);
   }

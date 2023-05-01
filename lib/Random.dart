@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 class MapsPage extends StatefulWidget {
   const MapsPage({Key? key}) : super(key: key);
@@ -13,266 +16,77 @@ class MapsPage extends StatefulWidget {
 
 class MapsPageState extends State<MapsPage> {
   late GoogleMapController mapController;
-  final LatLng _center = const LatLng(31.51214443738609, 74.37939589382803);
-  List<Marker> _marker = [];
 
-  double _originLatitude = 31.51214443738609,
-      _originLongitude = 74.37939589382803;
-  double _destLatitude = 31.513227917965875, _destLongitude = 74.38006954675411;
-  Map<PolylineId, Polyline> polylines = {};
-  List<LatLng> polylineCoordinates = [];
-  PolylinePoints polylinePoints = PolylinePoints();
-  String googleAPiKey = "AIzaSyApvWQgBKFUgwcJ91suH3wGogD4WhAa6WM";
-
-  void _showActionSheet(BuildContext context, String busStopName) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) => CupertinoActionSheet(
-        title: Text(
-          busStopName,
-          style: TextStyle(fontSize: 20),
-        ),
-        message: const Text(
-          'Bus Stop',
-          style: TextStyle(fontSize: 15),
-        ),
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text(
-            'Cancel',
-            style: TextStyle(color: Colors.blue),
-          ),
-        ),
-        actions: <CupertinoActionSheetAction>[
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Save',
-              style: TextStyle(color: Colors.blue),
-            ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Open on Google Maps',
-              style: TextStyle(color: Colors.blue),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  _addPolyLine() {
-    PolylineId id = PolylineId("poly");
-    Polyline polyline = Polyline(
-      polylineId: id,
-      color: Colors.red,
-      points: polylineCoordinates,
-      width: 5,
-    );
-    polylines[id] = polyline;
-    setState(() {});
-  }
-
-  _getPolyline() async {
-    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        googleAPiKey,
-        PointLatLng(_originLatitude, _originLongitude),
-        PointLatLng(_destLatitude, _destLongitude),
-        travelMode: TravelMode.driving,
-        wayPoints: [
-          PolylineWayPoint(
-            location: "31.506621004611624,74.37830243389809",
-            stopOver: true,
-          )
-        ]);
-    if (result.points.isNotEmpty) {
-      result.points.forEach((PointLatLng point) {
-        polylineCoordinates.add(LatLng(point.latitude, point.longitude));
-      });
-    }
-    _addPolyLine();
-  }
-
-  late List<Marker> _list = [
-    Marker(
-      markerId: MarkerId('1'),
-      position: LatLng(31.51214443738609, 74.37939589382803),
-      infoWindow: InfoWindow(
-        snippet: "huzaifa",
-        title: 'My current Location',
-      ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      consumeTapEvents: false,
-    ),
-    Marker(
-      // onTap: () => _showActionSheet(context,'Nadeem Chowk'),
-      markerId: MarkerId('2'),
-      position: LatLng(31.506621004611624, 74.37830243389809),
-      infoWindow: InfoWindow(
-        title: 'Nadeem Chowk',
-      ),
-
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      consumeTapEvents: false,
-    ),
-    Marker(
-      // onTap: () => _showActionSheet(context,'Sky Grill'),
-      markerId: MarkerId('2'),
-      position: LatLng(31.513227917965875, 74.38006954675411),
-      infoWindow: InfoWindow(
-        title: 'Sky Grill',
-      ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-      consumeTapEvents: false,
-    )
-  ];
+  final LatLng _center = const LatLng(31.4815, 74.3030);
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
 
+  TextEditingController _Tcontroller = TextEditingController();
+  var uuid = Uuid();
+  String _sessionToken = '122344';
+  List<dynamic> _placesList = [];
+
   @override
   void initState() {
     super.initState();
-    _marker.addAll(_list);
-    _getPolyline();
+    _Tcontroller.addListener(() {
+      onChange();
+    });
   }
 
+  void onChange() {
+    if (_sessionToken == null) {
+      setState(() {
+        _sessionToken = uuid.v4();
+      });
+    }
+    getSuggestions(_Tcontroller.text);
+  }
+
+  void getSuggestions(String input) async {
+    String kPlaces_API_key = "AIzaSyC5Y_qUAVEn3_mlCeDDTQdH0gqzLHCS-tg";
+    String baseURL =
+        'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+    String request =
+        '$baseURL?input=$input&types=(cities)&key=$kPlaces_API_key&sessiontoken=$_sessionToken';
+
+    var response = await http.get(Uri.parse(request));
+    var data = response.body.toString();
+
+    // print('data');
+    // print(data);
+    if (response.statusCode == 200) {
+      setState(() {
+        _placesList = jsonDecode(response.body.toString())['predictions'];
+      });
+    } else {
+      throw Exception('Failed to Load Data');
+    }
+  }
+
+  bool is_visible = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: null,
-        body: Stack(
-          children: [
-            GoogleMap(
-              onMapCreated: _onMapCreated,
-              mapType: MapType.normal,
-              initialCameraPosition: CameraPosition(
-                target: _center,
-                zoom: 15.0,
-              ),
-              markers: Set<Marker>.of(_marker),
-              myLocationButtonEnabled: false,
-              tiltGesturesEnabled: true,
-              compassEnabled: true,
-              scrollGesturesEnabled: true,
-              zoomGesturesEnabled: true,
-              polylines: Set<Polyline>.of(polylines.values),
-            ),
-            Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.grey,
-                    width: 2,
-                  ),
-                ),
-                margin: const EdgeInsets.fromLTRB(10, 30, 10, 10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                child: const DropdownButtonHideUnderline(
-                  child: const DropDown(),
-                )),
-          ],
+        appBar: AppBar(
+          elevation: 2,
+          title: const Text('Home'),
+        ),
+        body: GoogleMap(
+          onMapCreated: _onMapCreated,
+          mapType: MapType.normal,
+          zoomControlsEnabled: false,
+          initialCameraPosition: CameraPosition(
+            target: _center,
+            zoom: 15.0,
+          ),
+          myLocationButtonEnabled: false,
         ),
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            FloatingActionButton(
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => Container(
-                        height: MediaQuery.of(context).size.height * 0.90,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(25.0),
-                            topRight: Radius.circular(25.0),
-                          ),
-                        ),
-                        child: Padding(
-                            padding: const EdgeInsets.all(15.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Container(
-                                  height: 40,
-                                  width: MediaQuery.of(context).size.width,
-                                  child: TextField(
-                                    decoration: InputDecoration(
-                                        contentPadding:
-                                            const EdgeInsets.fromLTRB(
-                                                10, 10, 10, 5),
-                                        hintText: "Your Location",
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(20.0),
-                                        ),
-                                        suffixIcon: IconButton(
-                                          onPressed: () {},
-                                          icon: const Icon(Icons.clear),
-                                        )),
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Container(
-                                  height: 40,
-                                  width: MediaQuery.of(context).size.width,
-                                  child: TextField(
-                                    decoration: InputDecoration(
-                                        contentPadding:
-                                            const EdgeInsets.fromLTRB(
-                                                10, 10, 10, 5),
-                                        hintText: "Insert Mid points",
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(20.0),
-                                        ),
-                                        suffixIcon: IconButton(
-                                          onPressed: () {},
-                                          icon: const Icon(Icons.accessibility),
-                                        )),
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Container(
-                                  height: 40,
-                                  width: MediaQuery.of(context).size.width,
-                                  child: TextField(
-                                    decoration: InputDecoration(
-                                        contentPadding:
-                                            const EdgeInsets.fromLTRB(
-                                                10, 10, 10, 5),
-                                        hintText: "Search Destination",
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(20.0),
-                                        ),
-                                        suffixIcon: IconButton(
-                                          onPressed: () {},
-                                          icon: const Icon(Icons.search),
-                                        )),
-                                  ),
-                                ),
-                              ],
-                            ))),
-                  );
-                },
-                child: const Icon(Icons.list)),
-            const SizedBox(height: 40),
             FloatingActionButton(
               onPressed: () {
                 showModalBottomSheet(
@@ -280,7 +94,7 @@ class MapsPageState extends State<MapsPage> {
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (context) => Container(
-                      height: MediaQuery.of(context).size.height * 0.90,
+                      height: MediaQuery.of(context).size.height * 0.40,
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.only(
@@ -289,49 +103,340 @@ class MapsPageState extends State<MapsPage> {
                         ),
                       ),
                       child: Padding(
-                          padding: const EdgeInsets.all(15.0),
+                          padding: const EdgeInsets.fromLTRB(15, 30, 15, 15),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Container(
-                                height: 40,
-                                width: MediaQuery.of(context).size.width,
-                                child: TextField(
-                                  decoration: InputDecoration(
-                                      contentPadding: const EdgeInsets.fromLTRB(
-                                          10, 10, 10, 5),
-                                      hintText: "Your Location",
-                                      border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20.0),
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Container(
+                                    padding: EdgeInsets.all(12.5),
+                                    height: 50,
+                                    width: MediaQuery.of(context).size.width,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10.0),
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 2,
                                       ),
-                                      suffixIcon: IconButton(
-                                        onPressed: () {},
-                                        icon: const Icon(Icons.clear),
-                                      )),
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Container(
-                                height: 40,
-                                width: MediaQuery.of(context).size.width,
-                                child: TextField(
-                                  decoration: InputDecoration(
-                                      contentPadding: const EdgeInsets.fromLTRB(
-                                          10, 10, 10, 5),
-                                      hintText: "Search Destination",
-                                      border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20.0),
+                                    ),
+                                    child: GestureDetector(
+                                      child: Text(
+                                        "Your Location",
+                                        style: TextStyle(
+                                          // color: Colors.grey,
+                                          fontSize: 18,
+                                          // fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                      suffixIcon: IconButton(
-                                        onPressed: () {},
-                                        icon: const Icon(Icons.search),
-                                      )),
-                                ),
-                              ),
-                            ],
-                          ))),
+                                      onTap: () {
+                                        showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (context) => Container(
+                                                height: MediaQuery.of(context)
+                                                        .size
+                                                        .height *
+                                                    0.90,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.only(
+                                                    topLeft:
+                                                        Radius.circular(25.0),
+                                                    topRight:
+                                                        Radius.circular(25.0),
+                                                  ),
+                                                ),
+                                                child: Padding(
+                                                    padding: const EdgeInsets
+                                                            .fromLTRB(
+                                                        15, 25, 15, 15),
+                                                    child: Column(children: [
+                                                      TextFormField(
+                                                          controller:
+                                                              _Tcontroller,
+                                                          decoration: InputDecoration(
+                                                              prefixIcon: Icon(Icons
+                                                                  .home_rounded),
+                                                              hintText:
+                                                                  'Your starting location')),
+                                                      // Container(
+                                                      //     padding:
+                                                      //         EdgeInsets.fromLTRB(
+                                                      //             13, 12, 0, 0),
+                                                      //     height: 40,
+                                                      //     width: MediaQuery.of(
+                                                      //             context)
+                                                      //         .size
+                                                      //         .width,
+                                                      //     child: Row(children: [
+                                                      //       Icon(Icons
+                                                      //           .person_pin_circle_rounded),
+                                                      //       const SizedBox(
+                                                      //           width: 12),
+                                                      //       GestureDetector(
+                                                      //           child: Text(
+                                                      //             "Choose on Map",
+                                                      //             style:
+                                                      //                 TextStyle(
+                                                      //               color: Colors
+                                                      //                   .black,
+                                                      //               fontSize: 16,
+                                                      //             ),
+                                                      //           ),
+                                                      //           onTap: () {})
+                                                      //     ])),
+                                                      Expanded(
+                                                          child:
+                                                              ListView.builder(
+                                                                  itemCount:
+                                                                      _placesList
+                                                                          .length,
+                                                                  itemBuilder:
+                                                                      (context,
+                                                                          index) {
+                                                                    return ListTile(
+                                                                      onTap:
+                                                                          () async {
+                                                                        List<Location>
+                                                                            locations =
+                                                                            await locationFromAddress(_placesList[index]['description']);
+                                                                        print(locations
+                                                                            .last
+                                                                            .longitude);
+                                                                        print(locations
+                                                                            .last
+                                                                            .latitude);
+                                                                        Navigator.pop(
+                                                                            context);
+                                                                      },
+                                                                      title: Text(
+                                                                          _placesList[index]
+                                                                              [
+                                                                              'description']),
+                                                                    );
+                                                                  })),
+                                                    ]))));
+                                      },
+                                    )),
+                                const SizedBox(height: 15),
+                                Container(
+                                    padding: EdgeInsets.all(12.5),
+                                    height: 50,
+                                    width: MediaQuery.of(context).size.width,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10.0),
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: GestureDetector(
+                                      child: Text(
+                                        "Mid Point (Optional)",
+                                        style: TextStyle(
+                                          // color: Colors.grey,
+                                          fontSize: 18,
+                                          // fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (context) => Container(
+                                                height: MediaQuery.of(context)
+                                                        .size
+                                                        .height *
+                                                    0.90,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.only(
+                                                    topLeft:
+                                                        Radius.circular(25.0),
+                                                    topRight:
+                                                        Radius.circular(25.0),
+                                                  ),
+                                                ),
+                                                child: Padding(
+                                                    padding: const EdgeInsets
+                                                            .fromLTRB(
+                                                        15, 25, 15, 15),
+                                                    child: Column(children: [
+                                                      TextFormField(
+                                                          controller:
+                                                              _Tcontroller,
+                                                          decoration: InputDecoration(
+                                                              prefixIcon: Icon(
+                                                                  Icons
+                                                                      .add_location_rounded,
+                                                                  size: 25),
+                                                              hintText:
+                                                                  'Mid point to your journey')),
+                                                      Expanded(
+                                                          child:
+                                                              ListView.builder(
+                                                                  itemCount:
+                                                                      _placesList
+                                                                          .length,
+                                                                  itemBuilder:
+                                                                      (context,
+                                                                          index) {
+                                                                    return ListTile(
+                                                                      onTap:
+                                                                          () async {
+                                                                        List<Location>
+                                                                            locations =
+                                                                            await locationFromAddress(_placesList[index]['description']);
+                                                                        print(locations
+                                                                            .last
+                                                                            .longitude);
+                                                                        print(locations
+                                                                            .last
+                                                                            .latitude);
+                                                                        Navigator.pop(
+                                                                            context);
+                                                                      },
+                                                                      title: Text(
+                                                                          _placesList[index]
+                                                                              [
+                                                                              'description']),
+                                                                    );
+                                                                  })),
+                                                    ]))));
+                                      },
+                                    )),
+                                const SizedBox(height: 15),
+                                Container(
+                                    padding: EdgeInsets.all(12.5),
+                                    height: 50,
+                                    width: MediaQuery.of(context).size.width,
+                                    decoration: BoxDecoration(
+                                      // color: Color(0xfffff3ff),
+                                      borderRadius: BorderRadius.circular(10.0),
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: GestureDetector(
+                                      child: Text(
+                                        "Your Destination",
+                                        style: TextStyle(
+                                          //color: Colors.black,
+                                          fontSize: 18,
+                                          //fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (context) => Container(
+                                                height: MediaQuery.of(context)
+                                                        .size
+                                                        .height *
+                                                    0.90,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.only(
+                                                    topLeft:
+                                                        Radius.circular(25.0),
+                                                    topRight:
+                                                        Radius.circular(25.0),
+                                                  ),
+                                                ),
+                                                child: Padding(
+                                                    padding: const EdgeInsets
+                                                            .fromLTRB(
+                                                        15, 25, 15, 15),
+                                                    child: Column(children: [
+                                                      TextFormField(
+                                                          controller:
+                                                              _Tcontroller,
+                                                          decoration: InputDecoration(
+                                                              prefixIcon: Icon(
+                                                                  Icons
+                                                                      .approval_rounded,
+                                                                  size: 25),
+                                                              hintText:
+                                                                  'Your endpoint location')),
+                                                      Expanded(
+                                                          child:
+                                                              ListView.builder(
+                                                                  itemCount:
+                                                                      _placesList
+                                                                          .length,
+                                                                  itemBuilder:
+                                                                      (context,
+                                                                          index) {
+                                                                    return ListTile(
+                                                                      onTap:
+                                                                          () async {
+                                                                        List<Location>
+                                                                            locations =
+                                                                            await locationFromAddress(_placesList[index]['description']);
+                                                                        print(locations
+                                                                            .last
+                                                                            .longitude);
+                                                                        print(locations
+                                                                            .last
+                                                                            .latitude);
+                                                                        Navigator.pop(
+                                                                            context);
+                                                                      },
+                                                                      title: Text(
+                                                                          _placesList[index]
+                                                                              [
+                                                                              'description']),
+                                                                    );
+                                                                  })),
+                                                    ]))));
+                                      },
+                                    )),
+                                const SizedBox(height: 55),
+                                GestureDetector(
+                                    child: Container(
+                                        padding:
+                                            EdgeInsets.fromLTRB(140, 0, 0, 0),
+                                        height: 50,
+                                        width:
+                                            MediaQuery.of(context).size.width,
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius:
+                                              BorderRadius.circular(10.0),
+                                          border: Border.all(
+                                            color: Colors.red,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Row(children: [
+                                          Icon(
+                                            Icons.check_box_rounded,
+                                            color: Colors.white,
+                                            size: 22,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            "Done",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ])),
+                                    onTap: () {
+                                      setState(() {
+                                        is_visible = !is_visible;
+                                        Navigator.pop(context);
+                                      });
+                                    })
+                              ]))),
                 );
               },
               child: const Icon(Icons.directions),
@@ -340,153 +445,3 @@ class MapsPageState extends State<MapsPage> {
         ));
   }
 }
-
-class DropDown extends StatefulWidget {
-  const DropDown({super.key});
-
-  @override
-  State<DropDown> createState() => DropDownState();
-}
-
-class DropDownState extends State<DropDown> {
-  final List<String> list = <String>[
-    'Minimum Stations',
-    'Minimum Walking Distance',
-    'Minimum Total Distance'
-  ];
-  String dropdownValue = "";
-
-  DropDown() {
-    dropdownValue = list.first;
-  }
-
-  void showPageForSearchingTerminalLocations() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-          height: MediaQuery.of(context).size.height * 0.90,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(25.0),
-              topRight: Radius.circular(25.0),
-            ),
-          ),
-          child: Padding(
-              padding: const EdgeInsets.all(15.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Your Location",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.clear),
-                          )),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Insert Mid points",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.accessibility),
-                          )),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Search Destination",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.search),
-                          )),
-                    ),
-                  ),
-                ],
-              )
-          )
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButton2(
-      isExpanded: true,
-      hint: Text("Select Criteria"),
-      items: list.map<DropdownMenuItem<String>>((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
-      value: dropdownValue.isNotEmpty ? dropdownValue : null,
-      onChanged: (String? value) {
-        setState(() {
-          dropdownValue = value!;
-        });
-      },
-      dropdownStyleData: DropdownStyleData(
-        //width:  MediaQuery.of(context).size.width,
-        width: 352,
-
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: Colors.grey,
-            width: 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-
-        offset: Offset(-10, -10),
-      ),
-      menuItemStyleData: MenuItemStyleData(
-        height: 40,
-        padding: EdgeInsets.only(left: 14, right: 14),
-      ),
-    );
-  }
-}
-
-// BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(48, 48)), 'assets/images/location_icon.png').then((onValue) {
-//   myIcon = onValue;
-//
-// });
-
-
-// CameraPosition cameraPosition = CameraPosition(
-//     zoom: 14,
-//     target: LatLng(value.latitude ,value.longitude)
-// ); // CameraPosition
-// final GoogleMapController controller =  await mapController.future;
-// controller.animateCamera(CameraUpdate.newCameraPosition(cameraPosition));

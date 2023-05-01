@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,6 +8,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:navigo/Class/RoutesHandler.dart';
 import 'package:navigo/Class/Location.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:navigo/Class/DbHandler.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
+
 
 class MapsPage extends StatefulWidget {
   const MapsPage({Key? key}) : super(key: key);
@@ -16,6 +22,13 @@ class MapsPage extends StatefulWidget {
 }
 
 class MapsPageState extends State<MapsPage> {
+  // ----- Zain's --------
+  TextEditingController _Tcontroller = TextEditingController();
+  var uuid = Uuid();
+  String _sessionToken = '122344';
+  List<dynamic> _placesList = [];
+  // ----------------------
+
   late GoogleMapController mapController;
   // icon for user location
   BitmapDescriptor? myIcon;
@@ -24,14 +37,14 @@ class MapsPageState extends State<MapsPage> {
 
   RoutesHandler rh = RoutesHandler();
   final LatLng _center = const LatLng(31.51214443738609, 74.37939589382803);
-  bool _isMapVisible = true, _isPathComputed = false;
+  bool _isMapVisible = true, _isPathComputed = false,  is_visible =false;
   Icon ic = const Icon(Icons.directions);
-  Location? userLoc;
+  StopLocation? userLoc;
 
   Set<Polyline> _polylines = Set<Polyline>();
   List<Marker> _marker = [];
   // List<LatLng> _busStops = [];
-  List<Location> locationsToDisplay = [];
+  List<StopLocation> locationsToDisplay = [];
 
   // TODO: when zain will do his work
   // LatLng start , end , midway;
@@ -163,17 +176,12 @@ class MapsPageState extends State<MapsPage> {
           consumeTapEvents: true,
           onTap: () {
             print(locationsToDisplay[i].name + " " + locationsToDisplay[i+1].name);
-            rh.getDistance(locationsToDisplay[i].latts_longs, locationsToDisplay[i+1].latts_longs);
+            // rh.getDistance(locationsToDisplay[i].latts_longs, locationsToDisplay[i+1].latts_longs);
           },
         )
       );
     }
-    // _polylines.add(Polyline(
-    //   polylineId: PolylineId('route'),
-    //   color: Colors.blue,
-    //   width: 4,
-    //   points: _busStops,
-    // ));
+
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -263,7 +271,7 @@ class MapsPageState extends State<MapsPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-          height: MediaQuery.of(context).size.height * 0.90,
+          height: MediaQuery.of(context).size.height * 0.50,
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
@@ -272,47 +280,289 @@ class MapsPageState extends State<MapsPage> {
             ),
           ),
           child: Padding(
-              padding: const EdgeInsets.all(15.0),
+              padding: const EdgeInsets.fromLTRB(15, 30, 15, 15),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Your Location",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Container(
+                        padding: EdgeInsets.all(12.5),
+                        height: 50,
+                        width: MediaQuery.of(context).size.width,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10.0),
+                          border: Border.all(
+                            color: Colors.grey,
+                            width: 2,
                           ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.clear),
-                          )),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Search Destination",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
+                        ),
+                        child: GestureDetector(
+                          child: Text(
+                            "Your Location",
+                            style: TextStyle(
+                              // color: Colors.grey,
+                              fontSize: 18,
+                              // fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.search),
-                          )),
-                    ),
-                  ),
-                ],
-              ))),
+                          onTap: () {
+                            showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => Container(
+                                    height: MediaQuery.of(context).size.height * 0.90,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius:
+                                      BorderRadius.only(
+                                        topLeft:
+                                        Radius.circular(25.0),
+                                        topRight:
+                                        Radius.circular(25.0),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                        padding: const EdgeInsets
+                                            .fromLTRB(
+                                            15, 25, 15, 15),
+                                        child: Column(children: [
+                                          TextFormField(
+                                              controller:
+                                              _Tcontroller,
+                                              decoration: InputDecoration(
+                                                  prefixIcon: Icon(Icons
+                                                      .home_rounded),
+                                                  hintText:
+                                                  'Your starting location')),
+                                          Expanded(
+                                              child:
+                                              ListView.builder(
+                                                  itemCount: _placesList.length,
+                                                  itemBuilder: (context, index) {
+                                                    return ListTile(
+                                                      onTap:
+                                                          () async {
+                                                        List<Location>
+                                                        locations =
+                                                        await locationFromAddress(_placesList[index]['description']);
+                                                        print(locations
+                                                            .last
+                                                            .longitude);
+                                                        print(locations
+                                                            .last
+                                                            .latitude);
+                                                        Navigator.pop(
+                                                            context);
+                                                      },
+                                                      title: Text(_placesList[index]['description']),
+                                                    );
+                                                  })),
+                                        ]))));
+                          },
+                        )),
+                    const SizedBox(height: 15),
+                    Container(
+                        padding: EdgeInsets.all(12.5),
+                        height: 50,
+                        width: MediaQuery.of(context).size.width,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10.0),
+                          border: Border.all(
+                            color: Colors.grey,
+                            width: 2,
+                          ),
+                        ),
+                        child: GestureDetector(
+                          child: Text(
+                            "Mid Point (Optional)",
+                            style: TextStyle(
+                              // color: Colors.grey,
+                              fontSize: 18,
+                              // fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onTap: () {
+                            showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => Container(
+                                    height: MediaQuery.of(context)
+                                        .size
+                                        .height *
+                                        0.90,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius:
+                                      BorderRadius.only(
+                                        topLeft:
+                                        Radius.circular(25.0),
+                                        topRight:
+                                        Radius.circular(25.0),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                        padding: const EdgeInsets
+                                            .fromLTRB(
+                                            15, 25, 15, 15),
+                                        child: Column(children: [
+                                          TextFormField(
+                                              controller:
+                                              _Tcontroller,
+                                              decoration: InputDecoration(
+                                                  prefixIcon: Icon(
+                                                      Icons
+                                                          .add_location_rounded,
+                                                      size: 25),
+                                                  hintText:
+                                                  'Mid point to your journey')),
+                                          Expanded(
+                                              child:
+                                              ListView.builder(
+                                                  itemCount:
+                                                  _placesList
+                                                      .length,
+                                                  itemBuilder:
+                                                      (context,
+                                                      index) {
+                                                    return ListTile(
+                                                      onTap:
+                                                          () async {
+                                                        List<Location>
+                                                        locations =
+                                                        await locationFromAddress(_placesList[index]['description']);
+                                                        print(locations
+                                                            .last
+                                                            .longitude);
+                                                        print(locations
+                                                            .last
+                                                            .latitude);
+                                                        Navigator.pop(
+                                                            context);
+                                                      },
+                                                      title: Text(
+                                                          _placesList[index]
+                                                          [
+                                                          'description']),
+                                                    );
+                                                  })),
+                                        ]))));
+                          },
+                        )),
+                    const SizedBox(height: 15),
+                    Container(
+                        padding: EdgeInsets.all(12.5),
+                        height: 50,
+                        width: MediaQuery.of(context).size.width,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10.0),
+                          border: Border.all(
+                            color: Colors.grey,
+                            width: 2,
+                          ),
+                        ),
+                        child: GestureDetector(
+                          child: Text(
+                            "Your Destination",
+                            style: TextStyle(
+                              fontSize: 18,
+                            ),
+                          ),
+                          onTap: () {
+                            showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => Container(
+                                    height: MediaQuery.of(context)
+                                        .size
+                                        .height *
+                                        0.90,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius:
+                                      BorderRadius.only(
+                                        topLeft:
+                                        Radius.circular(25.0),
+                                        topRight:
+                                        Radius.circular(25.0),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                        padding: const EdgeInsets
+                                            .fromLTRB(
+                                            15, 25, 15, 15),
+                                        child: Column(children: [
+                                          TextFormField(
+                                              controller:
+                                              _Tcontroller,
+                                              decoration: InputDecoration(
+                                                  prefixIcon: Icon(
+                                                      Icons
+                                                          .approval_rounded,
+                                                      size: 25),
+                                                  hintText:
+                                                  'Your endpoint location')),
+                                          Expanded(
+                                              child: ListView.builder(
+                                                  itemCount:
+                                                  _placesList.length,
+                                                  itemBuilder: (context, index) {
+                                                    return ListTile(
+                                                      onTap: () async {
+                                                        List<Location>
+                                                        locations =
+                                                        await locationFromAddress(_placesList[index]['description']);
+                                                        print(locations.last.longitude);
+                                                        Navigator.pop(context);
+                                                      },
+                                                      title: Text(_placesList[index]['description']),
+                                                    );
+                                                  })),
+                                        ]
+                                        )
+                                    )
+                                )
+                            );
+                          },
+                        )),
+                    const SizedBox(height: 40),
+                    GestureDetector(
+                        child: Container(
+                            padding: EdgeInsets.fromLTRB(140, 0, 0, 0),
+                            height: MediaQuery.of(context).size.height*0.080,
+                            width: MediaQuery.of(context).size.width,
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius:
+                              BorderRadius.circular(10.0),
+                              border: Border.all(
+                                color: Colors.red,
+                                width: 2,
+                              ),
+                            ),
+                            child: Row(children: [
+                              Icon(
+                                Icons.check_box_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                "Done",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ])),
+                        onTap: () {
+                          setState(() {
+                            is_visible = !is_visible;
+                            Navigator.pop(context);
+                          });
+                        })
+                  ]))),
     );
   }
 
@@ -328,7 +578,7 @@ class MapsPageState extends State<MapsPage> {
 
     getUserCurrentLocation().then((value) async {
       print("Current location obtained: $value");
-      userLoc = Location(LatLng(value.latitude, value.longitude), 'My Location',
+      userLoc = StopLocation(LatLng(value.latitude, value.longitude), 'My StopLocation',
           false, false, false, true);
       locationsToDisplay.insert(0, userLoc!);
 
@@ -336,13 +586,45 @@ class MapsPageState extends State<MapsPage> {
         fillMarkers();
       });
     });
+    _Tcontroller.addListener(() {
+      onChange();
+    });
+
     // listenToLocationChanges();
+  }
+
+  void onChange() {
+    if (_sessionToken == null) {
+      setState(() {
+        _sessionToken = uuid.v4();
+      });
+    }
+    getSuggestions(_Tcontroller.text);
+  }
+
+  void getSuggestions(String input) async {
+    String kPlaces_API_key = "AIzaSyC5Y_qUAVEn3_mlCeDDTQdH0gqzLHCS-tg";
+    String baseURL = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+    String request = '$baseURL?input=$input&types=(cities)&key=$kPlaces_API_key&sessiontoken=$_sessionToken';
+
+    var response = await http.get(Uri.parse(request));
+    var data = response.body.toString();
+
+    if (response.statusCode == 200) {
+      setState(() {
+
+        _placesList = jsonDecode(response.body.toString())['predictions'];
+      });
+    } else {
+      throw Exception('Failed to Load Data');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: null,
+
         body: Stack(
           children: [
             // Widget of Google Maps
@@ -363,6 +645,7 @@ class MapsPageState extends State<MapsPage> {
                   tiltGesturesEnabled: true,
                   scrollGesturesEnabled: true,
                   zoomGesturesEnabled: true,
+                  zoomControlsEnabled: false,
                   polylines: _polylines,
                 ),
               ),
@@ -381,8 +664,7 @@ class MapsPageState extends State<MapsPage> {
                     ),
                   ),
                   margin: const EdgeInsets.fromLTRB(10, 30, 10, 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                   child: const DropdownButtonHideUnderline(
                     child: DropDown(),
                   )),
@@ -398,9 +680,7 @@ class MapsPageState extends State<MapsPage> {
                   padding: EdgeInsets.all(10),
                   margin: EdgeInsets.fromLTRB(0, 80, 0, 0),
                   child: BusStopListView(
-                      busStops: locationsToDisplay
-                          .getRange(1, locationsToDisplay.length)
-                          .toList()),
+                      busStops: locationsToDisplay.getRange(1, locationsToDisplay.length).toList()),
                 ),
               ),
             ),
@@ -430,8 +710,6 @@ class MapsPageState extends State<MapsPage> {
                     fillMarkers();
                     fillPolyLines();
 
-                    rh.readAdjacencyList();
-                    //rh.Print();
                   });
                 },
               ),
@@ -441,43 +719,40 @@ class MapsPageState extends State<MapsPage> {
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            FloatingActionButton(
-              heroTag: "btn1",
-              onPressed: () {
-                if (!_isPathComputed) {
-                  showPageForSearchingMidWay();
-                }
-                else {
-                  setState(() {
-                     rh.graph.clear();
-                    _isMapVisible = true;
-                    ic = const Icon(Icons.directions);
-                    _isPathComputed = false;
 
-                    locationsToDisplay.clear();
-                    if (userLoc != null) {
-                      locationsToDisplay.add(userLoc!);
+            Visibility(
+              visible: _isPathComputed,
+                child: FloatingActionButton(
+                  heroTag: "btn1",
+                  onPressed: () {
+                    if (_isPathComputed) {
+                      setState(() {
+                        rh.graph.clear();
+                        _isMapVisible = true;
+                        ic = const Icon(Icons.directions);
+                        _isPathComputed = false;
+
+                        locationsToDisplay.clear();
+                        if (userLoc != null) {
+                          locationsToDisplay.add(userLoc!);
+                        }
+                        locationsToDisplay.addAll(rh.stations);
+
+                        fillMarkers();
+                        _polylines.clear();
+
+                      });
                     }
-                    locationsToDisplay.addAll(rh.stations);
 
-                    fillMarkers();
-                    _polylines.clear();
+                  },
+                  foregroundColor: Colors.green,
+                  backgroundColor: Colors.white,
+                  elevation: 10,
 
-                    // random code just to test , whether changing something in list , reflect change on the UI or not
-
-                    // this.locationsToDisplay.removeAt(0);
-                    // this._busStops.removeAt(0);
-                    // fillMarkers();
-                    // fillPolyLines();
-                  });
-                }
-              },
-              foregroundColor: !_isPathComputed ? Colors.white : Colors.green,
-              backgroundColor: !_isPathComputed ? Colors.red : Colors.white,
-              elevation: 10,
-              child: Icon(
-                  !_isPathComputed ? Icons.list : Icons.done_outline_outlined),
+                  child: Icon(Icons.done_outline_outlined),
+                ),
             ),
+
             const SizedBox(height: 40),
             FloatingActionButton(
               heroTag: "btn2",
@@ -562,7 +837,7 @@ class DropDownState extends State<DropDown> {
 }
 
 class BusStopListView extends StatelessWidget {
-  final List<Location> busStops;
+  final List<StopLocation> busStops;
 
   BusStopListView({required this.busStops}) {}
 

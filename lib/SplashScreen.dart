@@ -6,16 +6,22 @@ import 'package:navigo/HomePage.dart';
 import 'package:navigo/MapsPage.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:navigo/LoginPage.dart';
+import 'package:navigo/Class/DbHandler.dart';
 
 class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
     return  AnimatedSplashScreen.withScreenFunction(
-        splash: Center(
+
+      splash: Center(
            child:  Image.asset('assets/images/logo.png'),
         ),
-        screenFunction: ()async {
+        screenFunction: () async {
+          print("Huzaifa---------\n");
+          DbHandler().copyDatabase();
+
+          //return LoginPage();
           if (FirebaseAuth.instance.currentUser != null) {
             return  HomePage();
           }else{
