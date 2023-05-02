@@ -10,28 +10,26 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:navigo/Class/DbHandler.dart';
+import 'package:collection/collection.dart';
 
+class Node {
+  int value;
+  num distance;
+
+  Node(this.value, this.distance);
+}
 class RoutesHandler {
 
   List<StopLocation> stations = [];
   DbHandler db = DbHandler();
-  // TODO: May be we will have to change this as Map<String,List<StopLocation>> ..
   Map<int,StopLocation> locations = {};
-  Map<int,List<int>> graph = {};
+  Map<int,List<Node>> graph = {};
 
-  RoutesHandler() {
-    _populateStations();
-    readLocations();
-    readGraph();
-  }
+  RoutesHandler() {}
 
-  void _populateStations() {
-    stations.add(StopLocation(
-        LatLng(31.506621004611624, 74.37830243389809), 'Nadeem Chowk', false,
-        true));
-    stations.add(StopLocation(
-        LatLng(31.506238484612883, 74.38494682631604), 'RA-Bazar', false,
-        true));
+  Future<void> populateStations() async{
+    await readLocations();
+    stations = locations.values.toList();
   }
 
   void parseStringToBool(String boolString, StopLocation loc){
@@ -51,26 +49,27 @@ class RoutesHandler {
       this.locations[row['Node']] = StopLocation(LatLng(row['Lattitude'], row['Longitude']), row['LocationName']);
       parseStringToBool(row['StationType'], this.locations[ row['Node'] ]! );
       this.locations[ row['Node'] ]!.route_num = row['RouteNum'];
+      this.locations[ row['Node'] ]!.nodeNum = row['Node'];
     });
     // PrintLocations();
     return;
 
   }
+
   Future<void> readGraph() async{
 
     List<Map> data = await db.getGraph();
     data.forEach((row) {
       if ( !this.graph.containsKey(row['Node']) ){
-        this.graph[row['Node']] = [row['NeighbourNode']];
+        this.graph[row['Node']] = [Node(row['NeighbourNode'], row['Distance'])];
       }else{
-        this.graph[row['Node']]!.add(row['NeighbourNode']);
+        this.graph[row['Node']]!.add(Node(row['NeighbourNode'], row['Distance']));
       }
     });
     //PrintGraph();
     return;
 
   }
-
 
   List<LatLng> getStationCoordinates(List<StopLocation> stations) {
     List<LatLng> lats_langs = [];
@@ -80,35 +79,7 @@ class RoutesHandler {
     return lats_langs;
   }
 
-  List<StopLocation> getComputedPath() {
-    //TODO: There would be some paramters
-    List<StopLocation> result = [
-      StopLocation(
-          LatLng(31.51214443738609, 74.37939589382803),
-          'Starting Point',
-          false,
-          false,
-          false,
-          false,
-          false,
-          true)
-    ];
-    result.addAll(stations);
-    result.add(StopLocation(
-        LatLng(31.50018037093097, 74.39487289494411),
-        'Destination Point',
-        false,
-        false,
-        false,
-        false,
-        true));
-
-    return result;
-  }
-
   // Future<double> getDistance(LatLng startLocation, LatLng endLocation) async {
-  //   // startLocation = LatLng(31.5031007440085, 74.3492406466929);
-  //   // endLocation = LatLng(31.482608024865634, 74.30323539847984);
   //
   //   List<LatLng> polylineCoordinates = [];
   //   PolylinePoints polylinePoints = PolylinePoints();
@@ -143,7 +114,142 @@ class RoutesHandler {
   //   return totalDistance;
   // }
   //
+  // Future<int> getClosestStation(StopLocation node) async{
+  //   double minDist = double.infinity;
+  //   int nodeNum = 0;
+  //   List<int> keys = locations.keys.toList();
+  //   for (var i = 0; i < keys.length; i++) {
+  //     double dist = await getDistance(node.latts_longs, locations[keys[i]]!.latts_longs);
+  //     if (dist < minDist) {
+  //       minDist = dist;
+  //       nodeNum = keys[i];
+  //     }
+  //   }
+  //
+  //   print(minDist);
+  //   return  nodeNum;
+  // }
+  //
+  // Future<void> Testfunc(StopLocation start) async{
+  //   int closestStation = await getClosestStation(start);
+  //   print(closestStation);
+  //   if (locations[closestStation] != null) {
+  //     print("Closest Stations is: " + locations[closestStation]!.name);
+  //   }
+  // }
 
+  void Print(List<int> path, int currNode, List<StopLocation> result){
+    if (path[currNode] == -2){
+      print(locations[currNode]!.name);
+      result.add(locations[currNode]!);
+    }else{
+      Print(path,path[currNode], result);
+
+      print(locations[currNode]!.name);
+      result.add(locations[currNode]!);
+    }
+  }
+
+  int getClosestStation(StopLocation node) {
+    double minDist = double.infinity;
+    int nodeNum = 0;
+    List<int> keys = locations.keys.toList();
+    for (var i = 0; i < keys.length; i++) {
+      double dist = Geolocator.distanceBetween(node.latts_longs.latitude, node.latts_longs.longitude,
+          locations[keys[i]]!.latts_longs.latitude, locations[keys[i]]!.latts_longs.longitude);
+
+      if (dist < minDist) {
+        minDist = dist;
+        nodeNum = keys[i];
+      }
+    }
+
+    return  nodeNum;
+  }
+
+  Future<void> findMinPath(Map<int,List<Node>> graph, int s, int goal,List<StopLocation> result ) async{
+
+    int compareByAgeDesc(Node a, Node b) => a.distance.compareTo(b.distance);
+    HeapPriorityQueue<Node> q = HeapPriorityQueue(compareByAgeDesc);
+    List<num> dist = List.filled(graph.length+1, 1.0/0.0);
+    List<int> path = List.filled(graph.length+1, -1);
+
+    dist[s] = 0;
+    path[s] = -2;
+    q.add(Node(s,0));
+    while(! q.isEmpty) {
+
+      Node u = q.first;
+      q.removeFirst();
+      if(u.value == goal){
+        q.clear();
+        break;
+      }
+
+      graph[u.value]!.forEach((node) {
+
+        int v = node.value;
+        num weight = node.distance;
+
+        if (dist[u.value] + weight < dist[v] ){
+          path[v] = u.value;
+          dist[v] = dist[u.value] + weight;
+          q.add(Node(v,dist[v]));
+        }
+
+      });
+    }
+    Print(path,goal, result);
+
+  }
+
+  Future<List<StopLocation>> getComputedPath(StopLocation start , StopLocation end , String criteria) async {
+    // Testfunc(start);
+
+    // get the graph if it is not already fetched
+    if (graph.isEmpty){
+      print("Yes");
+      await readGraph();
+    }
+
+    List<StopLocation> result = [];
+    // if graph is not empty(empty may be bcz of some synchronization issues) , then apply the algo.
+    if(! graph.isEmpty){
+      //Get closest possible station from start and end
+      int startStationIndex = getClosestStation(start);
+      int endStationIndex = getClosestStation(end);
+
+      result.add(start);
+      findMinPath(graph,startStationIndex,endStationIndex,result);
+      //result.addAll([locations[21]!, locations[20]!]);
+      result.add(end);
+
+
+    }
+    return result;
+
+  }
+
+  Future<List<StopLocation>> getNextPossiblePath(StopLocation start , StopLocation end,String criteria,int edgeStart , int edgeEnd){
+    graph[edgeStart]!.remove(edgeEnd);
+
+    // remove the edge, which the user clicked to remove.
+    for(int i = 0 ; i < graph[edgeStart]!.length ; i++){
+      if (graph[edgeStart]![i].value == edgeEnd){
+        graph[edgeStart]!.removeAt(i);
+        break;
+      }
+    }
+    for(int i = 0 ; i < graph[edgeEnd]!.length ; i++){
+      if (graph[edgeEnd]![i].value == edgeStart){
+        graph[edgeEnd]!.removeAt(i);
+        break;
+      }
+    }
+
+    print(edgeStart.toString() + " "+ edgeEnd.toString());
+    return getComputedPath(start,end,criteria);
+  }
   void PrintLocations(){
     locations.forEach((key, value) {
       locations[key]?.Print();
@@ -156,15 +262,22 @@ class RoutesHandler {
     });
 
   }
-  void PrintGraph(){
-    graph.forEach((key, value) {
-      print(key.toString() + " " + locations[key]!.name);
-      print("----------");
-      value.forEach((loc) {
-        print(loc.toString() + " " + locations[loc]!.name);
-      });
-      print("----------\n");
 
-    });
+  void PrintGraph() {
+    List<int> keys = graph.keys.toList();
+    print(keys[0]);
+    for(int i = 0 ;  i < graph[keys[0]]!.length ; i++){
+      print(graph[keys[0]]![i].toString() + " ");
+    }
+    // graph.forEach((key, value) {
+    //   print(key.toString() + " " + locations[key]!.name);
+    //   print("----------");
+    //   value.forEach((loc) {
+    //     print(loc.toString() + " " + locations[loc]!.name);
+    //   });
+    //   print("----------\n");
+    //
+    //
+    // });
   }
 }

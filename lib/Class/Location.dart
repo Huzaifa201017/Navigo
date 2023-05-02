@@ -7,6 +7,8 @@ class StopLocation{
   bool isMetro , isSpeedo , isTrain, isYourLocation, isDestination, isStartingPoint;
   int route_num = -1;
   double distance=0.0;
+  int nodeNum = 0;
+  final _routesName = {1:"R.A Bazar - Chungi Amar Sidhu ", 2:"Bhatti Chowk - Shadbagh Underpass ", 3:"Babu Sabu - Main Market ", 4:"R.A Bazar - Bhatti Chowk ", 5:"Canal - Thokar Niaz Baig", 6: "R.A Bazar - Nasir Bagh "};
 
   StopLocation(this.latts_longs ,this.name,[this.isMetro=false , this.isSpeedo=false , this.isTrain=false, this.isYourLocation=false, this.isDestination=false, this.isStartingPoint=false]);
 
@@ -17,6 +19,7 @@ class StopLocation{
     }
     if (isSpeedo){
       type += "-Speedo Station\n";
+      type += "--"+_routesName[route_num]!;
     }
     if (isTrain){
       type += "-Orange Train Station\n";

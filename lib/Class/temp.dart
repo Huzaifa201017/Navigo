@@ -51,14 +51,15 @@ void findMinPath(Map<int,List<Node>> graph, int s, int goal) {
 
 }
 void main() {
-  Map<int, List<Node>> graph = {
-    0: [Node(1, 7), Node(2, 5)],
-    1: [Node(2, 2), Node(3, 1)],
-    2: [Node(1, 3), Node(4, 1), Node(3, 9)],
-    3: [Node(4, 4)],
-    4: [Node(0, 7), Node(3, 1)]
-  };
-  findMinPath(graph,0,3);
+
+  // Map<int, List<Node>> graph = {
+  //   0: [Node(1, 7), Node(2, 5)],
+  //   1: [Node(2, 2), Node(3, 1)],
+  //   2: [Node(1, 3), Node(4, 1), Node(3, 9)],
+  //   3: [Node(4, 4)],
+  //   4: [Node(0, 7), Node(3, 1)]
+  // };
+  // findMinPath(graph,0,3);
 
 }
 

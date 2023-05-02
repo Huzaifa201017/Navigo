@@ -39,21 +39,20 @@ class MapsPageState extends State<MapsPage> {
   final LatLng _center = const LatLng(31.51214443738609, 74.37939589382803);
   bool _isMapVisible = true, _isPathComputed = false,  is_visible =false;
   Icon ic = const Icon(Icons.directions);
-  StopLocation? userLoc;
+  StopLocation? userLoc,start,end , midway;
 
   Set<Polyline> _polylines = Set<Polyline>();
   List<Marker> _marker = [];
   // List<LatLng> _busStops = [];
   List<StopLocation> locationsToDisplay = [];
 
-  // TODO: when zain will do his work
-  // LatLng start , end , midway;
-  // String criteria;
+
+  String criteria = "";
+  final DropDown d =  DropDown();
 
   @override
   void dispose() {
     super.dispose();
-
     /// don't forget to cancel stream once no longer needed
     positionStream?.cancel();
   }
@@ -174,8 +173,25 @@ class MapsPageState extends State<MapsPage> {
           width: 4,
           points: [locationsToDisplay[i].latts_longs ,locationsToDisplay[i+1].latts_longs ],
           consumeTapEvents: true,
-          onTap: () {
+          onTap: () async {
             print(locationsToDisplay[i].name + " " + locationsToDisplay[i+1].name);
+            if (start != null && end != null ){
+              List<StopLocation> newResult = await rh.getNextPossiblePath(start!,end!,"Minimum Total Distance",locationsToDisplay[i].nodeNum,locationsToDisplay[i+1].nodeNum);
+
+              if (newResult.length != 0){
+
+                setState(() {
+
+                  locationsToDisplay.clear();
+                  locationsToDisplay.add(userLoc!);
+                  locationsToDisplay.addAll(newResult);
+
+                  fillMarkers();
+                  fillPolyLines();
+                });
+              }
+            }
+
             // rh.getDistance(locationsToDisplay[i].latts_longs, locationsToDisplay[i+1].latts_longs);
           },
         )
@@ -188,82 +204,6 @@ class MapsPageState extends State<MapsPage> {
     mapController = controller;
   }
 
-  void showPageForSearchingMidWay() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-          height: MediaQuery.of(context).size.height * 0.90,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(25.0),
-              topRight: Radius.circular(25.0),
-            ),
-          ),
-          child: Padding(
-              padding: const EdgeInsets.all(15.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Your Location",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.clear),
-                          )),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Insert Mid points",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.accessibility),
-                          )),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    height: 40,
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(10, 10, 10, 5),
-                          hintText: "Search Destination",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.search),
-                          )),
-                    ),
-                  ),
-                ],
-              ))),
-    );
-  }
 
   void showPageForSearchingTerminalLocations() {
     showModalBottomSheet(
@@ -299,9 +239,7 @@ class MapsPageState extends State<MapsPage> {
                           child: Text(
                             "Your Location",
                             style: TextStyle(
-                              // color: Colors.grey,
                               fontSize: 18,
-                              // fontWeight: FontWeight.bold,
                             ),
                           ),
                           onTap: () {
@@ -322,37 +260,30 @@ class MapsPageState extends State<MapsPage> {
                                       ),
                                     ),
                                     child: Padding(
-                                        padding: const EdgeInsets
-                                            .fromLTRB(
-                                            15, 25, 15, 15),
+                                        padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
                                         child: Column(children: [
                                           TextFormField(
                                               controller:
                                               _Tcontroller,
                                               decoration: InputDecoration(
-                                                  prefixIcon: Icon(Icons
-                                                      .home_rounded),
-                                                  hintText:
-                                                  'Your starting location')),
+                                                  prefixIcon: Icon(Icons.home_rounded),
+                                                  hintText: 'Your starting location'
+                                              )
+                                          ),
                                           Expanded(
                                               child:
                                               ListView.builder(
                                                   itemCount: _placesList.length,
                                                   itemBuilder: (context, index) {
                                                     return ListTile(
-                                                      onTap:
-                                                          () async {
-                                                        List<Location>
-                                                        locations =
-                                                        await locationFromAddress(_placesList[index]['description']);
-                                                        print(locations
-                                                            .last
-                                                            .longitude);
-                                                        print(locations
-                                                            .last
-                                                            .latitude);
-                                                        Navigator.pop(
-                                                            context);
+                                                      onTap: () async {
+                                                        List<Location>locations = await locationFromAddress(_placesList[index]['description']);
+                                                        print(locations.last.longitude);
+                                                        LatLng t = LatLng(locations.last.latitude, locations.last.longitude);
+                                                        start = StopLocation(t, "StartingPoint");
+                                                        start?.isStartingPoint = true;
+
+                                                        Navigator.pop(context);
                                                       },
                                                       title: Text(_placesList[index]['description']),
                                                     );
@@ -407,43 +338,23 @@ class MapsPageState extends State<MapsPage> {
                                             15, 25, 15, 15),
                                         child: Column(children: [
                                           TextFormField(
-                                              controller:
-                                              _Tcontroller,
+                                              controller: _Tcontroller,
                                               decoration: InputDecoration(
-                                                  prefixIcon: Icon(
-                                                      Icons
-                                                          .add_location_rounded,
-                                                      size: 25),
-                                                  hintText:
-                                                  'Mid point to your journey')),
+                                                  prefixIcon: Icon(Icons.add_location_rounded, size: 25),
+                                                  hintText: 'Mid point to your journey')),
                                           Expanded(
-                                              child:
-                                              ListView.builder(
-                                                  itemCount:
-                                                  _placesList
-                                                      .length,
-                                                  itemBuilder:
-                                                      (context,
-                                                      index) {
+                                              child: ListView.builder(
+                                                  itemCount: _placesList.length,
+                                                  itemBuilder: (context, index) {
                                                     return ListTile(
-                                                      onTap:
-                                                          () async {
-                                                        List<Location>
-                                                        locations =
-                                                        await locationFromAddress(_placesList[index]['description']);
-                                                        print(locations
-                                                            .last
-                                                            .longitude);
-                                                        print(locations
-                                                            .last
-                                                            .latitude);
-                                                        Navigator.pop(
-                                                            context);
+                                                      onTap: () async {
+                                                        List<Location>locations = await locationFromAddress(_placesList[index]['description']);
+                                                        print(locations.last.longitude);
+                                                        print(locations.last.latitude);
+
+                                                        Navigator.pop(context);
                                                       },
-                                                      title: Text(
-                                                          _placesList[index]
-                                                          [
-                                                          'description']),
+                                                      title: Text(_placesList[index]['description']),
                                                     );
                                                   })),
                                         ]))));
@@ -489,37 +400,41 @@ class MapsPageState extends State<MapsPage> {
                                       ),
                                     ),
                                     child: Padding(
-                                        padding: const EdgeInsets
-                                            .fromLTRB(
-                                            15, 25, 15, 15),
-                                        child: Column(children: [
-                                          TextFormField(
-                                              controller:
-                                              _Tcontroller,
-                                              decoration: InputDecoration(
-                                                  prefixIcon: Icon(
-                                                      Icons
-                                                          .approval_rounded,
-                                                      size: 25),
-                                                  hintText:
-                                                  'Your endpoint location')),
-                                          Expanded(
-                                              child: ListView.builder(
-                                                  itemCount:
-                                                  _placesList.length,
-                                                  itemBuilder: (context, index) {
-                                                    return ListTile(
-                                                      onTap: () async {
-                                                        List<Location>
-                                                        locations =
-                                                        await locationFromAddress(_placesList[index]['description']);
-                                                        print(locations.last.longitude);
-                                                        Navigator.pop(context);
-                                                      },
-                                                      title: Text(_placesList[index]['description']),
-                                                    );
-                                                  })),
-                                        ]
+                                        padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
+                                        child: Column(
+                                            children: [
+                                            TextFormField(
+                                                controller:
+                                                _Tcontroller,
+                                                decoration: InputDecoration(
+                                                    prefixIcon: Icon(Icons.approval_rounded, size: 25),
+                                                    hintText: 'Your endpoint location'
+                                                )
+                                            ),
+                                            Expanded(
+                                                child: ListView.builder(
+                                                    itemCount:
+                                                    _placesList.length,
+                                                    itemBuilder: (context, index) {
+                                                      return ListTile(
+                                                        onTap: () async {
+                                                          List<Location>locations = await locationFromAddress(_placesList[index]['description']);
+                                                          print(locations.last.longitude);
+
+                                                          // LatLng t = LatLng(locations.last.latitude, locations.last.longitude);
+                                                          // end = StopLocation(t, "Destination Point");
+                                                          // end?.isDestination = true;
+
+                                                          LatLng t = LatLng(31.48170416692978, 74.30305701092631);
+                                                          end = StopLocation(t, "FAST NUCES Lahore");
+                                                          end?.isDestination = true;
+
+                                                          Navigator.pop(context);
+                                                        },
+                                                        title: Text(_placesList[index]['description']),
+                                                      );
+                                                    })),
+                                          ]
                                         )
                                     )
                                 )
@@ -556,36 +471,60 @@ class MapsPageState extends State<MapsPage> {
                                 ),
                               ),
                             ])),
-                        onTap: () {
-                          setState(() {
-                            is_visible = !is_visible;
-                            Navigator.pop(context);
-                          });
+                        onTap: () async{
+                          Navigator.pop(context);
+
+                          if (start != null && end != null){
+                            List<StopLocation> result = await rh.getComputedPath(start! , end! , "Minimum Total Distance");
+
+                            if(result.length != 0){
+
+                              setState(() {
+                                ic = const Icon(Icons.list);
+                                _isPathComputed = true;
+
+                                //apply the algo correspondingly , update the bus stops/stations
+
+                                locationsToDisplay.clear();
+                                locationsToDisplay.add(userLoc!);
+                                locationsToDisplay.addAll(result);
+
+                                fillMarkers();
+                                fillPolyLines();
+                              });
+
+                            }
+                          }
+
                         })
                   ]))),
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-
+  Future<void> loadData() async {
+    await rh.populateStations();
     locationsToDisplay.addAll(rh.stations);
 
-    // BitmapDescriptor.fromAssetImage(ImageConfiguration(size: Size(50, 50)), 'assets/images/location.png').then((onValue) {
-    //   myIcon = onValue;
-    // });
-
     getUserCurrentLocation().then((value) async {
+
       print("Current location obtained: $value");
       userLoc = StopLocation(LatLng(value.latitude, value.longitude), 'My StopLocation',
           false, false, false, true);
+      start = userLoc;
+      start?.isStartingPoint = true;
       locationsToDisplay.insert(0, userLoc!);
 
       setState(() {
         fillMarkers();
       });
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+
     _Tcontroller.addListener(() {
       onChange();
     });
@@ -665,8 +604,8 @@ class MapsPageState extends State<MapsPage> {
                   ),
                   margin: const EdgeInsets.fromLTRB(10, 30, 10, 10),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  child: const DropdownButtonHideUnderline(
-                    child: DropDown(),
+                  child:  DropdownButtonHideUnderline(
+                    child: d,
                   )),
             ),
             // List View
@@ -685,35 +624,7 @@ class MapsPageState extends State<MapsPage> {
               ),
             ),
 
-            // Button(when pressed , the path will be computed and updates will happen in the locations),(Temporary)
-            Container(
-              margin: const EdgeInsets.fromLTRB(0, 300, 0, 0),
-              child: CupertinoButton(
-                color: Colors.blue,
-                child: const Text("Temp"),
-                onPressed: () {
-                  setState(()  {
-                    ic = const Icon(Icons.list);
-                    _isPathComputed = true;
 
-                    //TODO: Checks whether user have selected all the options for path computation
-                    //TODO: apply the algo correspondingly , update the bus stops/stations
-                    //-------temporary-----
-
-                    locationsToDisplay.clear();
-                    if (userLoc != null) {
-                      // temporary
-                      locationsToDisplay.add(userLoc!); // temporary
-                      locationsToDisplay.addAll(rh.getComputedPath());
-                    }
-
-                    fillMarkers();
-                    fillPolyLines();
-
-                  });
-                },
-              ),
-            ),
           ],
         ),
         floatingActionButton: Column(
@@ -754,6 +665,7 @@ class MapsPageState extends State<MapsPage> {
             ),
 
             const SizedBox(height: 40),
+
             FloatingActionButton(
               heroTag: "btn2",
               onPressed: () {
@@ -762,6 +674,7 @@ class MapsPageState extends State<MapsPage> {
                 }
                 else {
                   setState(() {
+                    rh.graph.clear();
                     _isMapVisible = !_isMapVisible;
                     if (_isMapVisible) {
                       ic = Icon(Icons.list);
@@ -787,11 +700,11 @@ class DropDown extends StatefulWidget {
 
 class DropDownState extends State<DropDown> {
   final List<String> list = <String>[
-    'Minimum Stations',
     'Minimum Walking Distance',
-    'Minimum Total Distance'
+    'Minimum Total Distance',
+    'Minimum Stations Switching'
   ];
-  String dropdownValue = "";
+  String dropdownValue = "Minimum Walking Distance";
 
   DropDown() {
     dropdownValue = list.first;

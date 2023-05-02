@@ -22,11 +22,12 @@ class SplashScreen extends StatelessWidget {
           DbHandler().copyDatabase();
 
           //return LoginPage();
-          if (FirebaseAuth.instance.currentUser != null) {
-            return  HomePage();
-          }else{
-            return LoginPage();
-          }
+          return  HomePage();
+          // if (FirebaseAuth.instance.currentUser != null) {
+          //   return  HomePage();
+          // }else{
+          //   return LoginPage();
+          // }
         },
       duration: 1700,
       splashIconSize: 10000.0,
