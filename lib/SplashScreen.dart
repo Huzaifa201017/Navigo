@@ -7,6 +7,7 @@ import 'package:navigo/MapsPage.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:navigo/LoginPage.dart';
 import 'package:navigo/Class/DbHandler.dart';
+import 'package:navigo/Class/Traveller.dart';
 
 class SplashScreen extends StatelessWidget {
 
@@ -18,12 +19,11 @@ class SplashScreen extends StatelessWidget {
            child:  Image.asset('assets/images/logo.png'),
         ),
         screenFunction: () async {
-          print("Huzaifa---------\n");
-          DbHandler().copyDatabase();
 
-          //return LoginPage();
-          return  HomePage();
+          DbHandler().copyDatabase();
+          return LoginPage();
           // if (FirebaseAuth.instance.currentUser != null) {
+          //   Traveller.Instance(FirebaseAuth.instance.currentUser!.uid);
           //   return  HomePage();
           // }else{
           //   return LoginPage();

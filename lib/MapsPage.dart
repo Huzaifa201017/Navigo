@@ -12,6 +12,7 @@ import 'package:navigo/Class/DbHandler.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
+import 'package:navigo/Class/Traveller.dart';
 
 
 class MapsPage extends StatefulWidget {
@@ -34,7 +35,6 @@ class MapsPageState extends State<MapsPage> {
   BitmapDescriptor? myIcon;
   StreamSubscription<Position>? positionStream;
 
-
   RoutesHandler rh = RoutesHandler();
   final LatLng _center = const LatLng(31.51214443738609, 74.37939589382803);
   bool _isMapVisible = true, _isPathComputed = false,  is_visible =false;
@@ -43,18 +43,89 @@ class MapsPageState extends State<MapsPage> {
 
   Set<Polyline> _polylines = Set<Polyline>();
   List<Marker> _marker = [];
-  // List<LatLng> _busStops = [];
   List<StopLocation> locationsToDisplay = [];
-
-
-  String criteria = "";
-  final DropDown d =  DropDown();
+  bool isLoading=false;
+  String dropdownValue = "Minimum Walking Distance";// path finding criteria
+  final Traveller user = Traveller.Instance();
 
   @override
   void dispose() {
     super.dispose();
     /// don't forget to cancel stream once no longer needed
     positionStream?.cancel();
+  }
+  void _moveCameraToLocation(LatLng location) {
+    setState(() {
+      mapController.animateCamera(CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: location,
+          zoom: 15.0,
+        ),
+      ));
+    });
+
+  }
+  void makeTransitionBetween_Map_ListView(){
+    setState(() {
+      _isMapVisible = !_isMapVisible;
+      if (_isMapVisible) {
+        ic = Icon(Icons.list);
+      }
+      else {
+        ic = Icon(Icons.map);
+      }
+    });
+  }
+  void onListRowSelected(LatLng location) {
+    makeTransitionBetween_Map_ListView();
+    print(location.latitude.toString() + " " + location.longitude.toString());
+    _moveCameraToLocation(location);
+  }
+
+  Future<void> onDropdownValueChanged(String newValue) async {
+    print(newValue);
+    if (start != null && end != null){
+      locationsToDisplay.clear();
+      rh.graph.clear();
+      rh.isCalculatingNextPath = false;
+      dropdownValue = newValue;
+
+      List<StopLocation> result = await rh.getComputedPath(start! , end! , dropdownValue);
+
+      if(result.length != 0){
+
+        setState(() {
+
+          locationsToDisplay.addAll(result);
+
+          fillMarkers();
+          locationsToDisplay.removeAt(0);
+          fillPolyLines();
+
+        });
+
+      }
+    }
+  }
+
+  void endPathFindingSession(){
+    setState(() {
+      rh.graph.clear();
+      rh.isCalculatingNextPath = false;
+      end = null;
+      start = userLoc;
+
+      _isMapVisible = true;
+      ic = const Icon(Icons.directions);
+      _isPathComputed = false;
+
+      locationsToDisplay.clear();
+      locationsToDisplay.addAll(rh.stations);
+
+      fillMarkers();
+      _polylines.clear();
+
+    });
   }
 
   void listenToLocationChanges() {
@@ -63,12 +134,11 @@ class MapsPageState extends State<MapsPage> {
       distanceFilter: 100,
     );
 
-    positionStream =
-        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-      (Position? position) {
+    positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position? position) {
         print(position == null ? 'Unknown' : '$position');
 
         if (position != null && userLoc != null) {
+
           if (position?.latitude != userLoc?.latts_longs.latitude &&
               position?.longitude != userLoc?.latts_longs.longitude) {
             setState(() {
@@ -89,43 +159,15 @@ class MapsPageState extends State<MapsPage> {
     } catch (e) {
       print("Error occurred while requesting permission");
     }
-    return await Geolocator.getCurrentPosition();
+    return Geolocator.getCurrentPosition();
+
   }
 
   void fillMarkers() {
     _marker.clear();
     for (int i = 0; i < locationsToDisplay.length; i++) {
-      if (locationsToDisplay[i].isYourLocation) {
-        _marker.add(
-          Marker(
-            markerId: MarkerId('$i'),
-            position: locationsToDisplay[i].latts_longs,
-            // icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-            icon: myIcon == null
-                ? BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueBlue)
-                : myIcon!,
-            consumeTapEvents: false,
-          ),
-        );
-      } else if (locationsToDisplay[i].isStartingPoint) {
-        //Create the corresponding marker
 
-        _marker.add(
-          Marker(
-            markerId: MarkerId('$i'),
-            position: locationsToDisplay[i].latts_longs,
-            infoWindow: InfoWindow(
-              title: locationsToDisplay[i].name,
-              snippet: locationsToDisplay[i].getStationTypesInString(),
-              onTap: () => showActionSheet(context, ""),
-            ),
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-            consumeTapEvents: false,
-          ),
-        );
-      } else if (locationsToDisplay[i].isDestination) {
+     if (locationsToDisplay[i].isStartingPoint) {
         //Create the corresponding marker
         _marker.add(
           Marker(
@@ -134,16 +176,34 @@ class MapsPageState extends State<MapsPage> {
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
               snippet: locationsToDisplay[i].getStationTypesInString(),
-              onTap: () => showActionSheet(context, ""),
+              onTap: () => showActionSheet_On_Station_Start_Marker_Press(context, "Your Starting Point",locationsToDisplay[i].latts_longs.latitude, locationsToDisplay[i].latts_longs.longitude ),
             ),
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
             consumeTapEvents: false,
           ),
         );
-      } else if (locationsToDisplay[i].isTrain ||
-          locationsToDisplay[i].isMetro ||
-          locationsToDisplay[i].isSpeedo) {
+      }
+
+     else if (locationsToDisplay[i].isDestination) {
+        //Create the corresponding marker
+        _marker.add(
+          Marker(
+            markerId: MarkerId('$i'),
+            position: locationsToDisplay[i].latts_longs,
+            infoWindow: InfoWindow(
+              title: locationsToDisplay[i].name,
+              snippet: locationsToDisplay[i].getStationTypesInString(),
+              onTap: () => showActionSheet_On_Dest_Marker_Press(context, locationsToDisplay[i].name,locationsToDisplay[i].latts_longs.latitude, locationsToDisplay[i].latts_longs.longitude, user!.id ),
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+            consumeTapEvents: false,
+          ),
+        );
+      }
+
+      else if ( locationsToDisplay[i].isTrain ||
+                locationsToDisplay[i].isMetro ||
+                locationsToDisplay[i].isSpeedo ) {
 
         _marker.add(
           Marker(
@@ -152,10 +212,9 @@ class MapsPageState extends State<MapsPage> {
             infoWindow: InfoWindow(
               title: locationsToDisplay[i].name,
               snippet: locationsToDisplay[i].getStationTypesInString(),
-              onTap: () => showActionSheet(context, ""),
+              onTap: () => showActionSheet_On_Station_Start_Marker_Press(context, "Station",locationsToDisplay[i].latts_longs.latitude, locationsToDisplay[i].latts_longs.longitude ),
             ),
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
             consumeTapEvents: false,
           ),
         );
@@ -167,18 +226,24 @@ class MapsPageState extends State<MapsPage> {
     _polylines.clear();
 
     for (int i=0 ; i < locationsToDisplay.length-1 ; i++){
-        _polylines.add(Polyline(
+        _polylines.add(
+            Polyline(
           polylineId: PolylineId('$i'),
           color: Colors.blue,
           width: 4,
+          // patterns: [
+          //   PatternItem.dash(8),
+          //   PatternItem.gap(30),
+          // ],
           points: [locationsToDisplay[i].latts_longs ,locationsToDisplay[i+1].latts_longs ],
           consumeTapEvents: true,
           onTap: () async {
             print(locationsToDisplay[i].name + " " + locationsToDisplay[i+1].name);
-            if (start != null && end != null ){
-              List<StopLocation> newResult = await rh.getNextPossiblePath(start!,end!,"Minimum Total Distance",locationsToDisplay[i].nodeNum,locationsToDisplay[i+1].nodeNum);
 
-              if (newResult.length != 0){
+            if (start != null && end != null ) {
+              List<StopLocation> newResult = await rh.getNextPossiblePath(start!,end!,dropdownValue,locationsToDisplay[i].nodeNum,locationsToDisplay[i+1].nodeNum);
+
+              if (newResult!=null && newResult.length != 0) {
 
                 setState(() {
 
@@ -189,13 +254,17 @@ class MapsPageState extends State<MapsPage> {
                   fillMarkers();
                   fillPolyLines();
                 });
+
+              }
+              else {
+                endPathFindingSession();
               }
             }
 
             // rh.getDistance(locationsToDisplay[i].latts_longs, locationsToDisplay[i+1].latts_longs);
           },
         )
-      );
+        );
     }
 
   }
@@ -203,7 +272,6 @@ class MapsPageState extends State<MapsPage> {
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
-
 
   void showPageForSearchingTerminalLocations() {
     showModalBottomSheet(
@@ -237,7 +305,7 @@ class MapsPageState extends State<MapsPage> {
                         ),
                         child: GestureDetector(
                           child: Text(
-                            "Your Location",
+                            start!.name,
                             style: TextStyle(
                               fontSize: 18,
                             ),
@@ -261,37 +329,48 @@ class MapsPageState extends State<MapsPage> {
                                     ),
                                     child: Padding(
                                         padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
-                                        child: Column(children: [
-                                          TextFormField(
-                                              controller:
-                                              _Tcontroller,
-                                              decoration: InputDecoration(
-                                                  prefixIcon: Icon(Icons.home_rounded),
-                                                  hintText: 'Your starting location'
-                                              )
-                                          ),
-                                          Expanded(
-                                              child:
-                                              ListView.builder(
-                                                  itemCount: _placesList.length,
-                                                  itemBuilder: (context, index) {
-                                                    return ListTile(
-                                                      onTap: () async {
-                                                        List<Location>locations = await locationFromAddress(_placesList[index]['description']);
-                                                        print(locations.last.longitude);
-                                                        LatLng t = LatLng(locations.last.latitude, locations.last.longitude);
-                                                        start = StopLocation(t, "StartingPoint");
-                                                        start?.isStartingPoint = true;
+                                        child: Column(
+                                            children: [
+                                              TextFormField(
+                                                  controller:
+                                                  _Tcontroller,
+                                                  decoration: InputDecoration(
+                                                      prefixIcon: Icon(Icons.home_rounded),
+                                                      hintText: 'Your starting location'
+                                                  )
+                                              ),
+                                              Expanded(
+                                                  child: ListView.builder(
+                                                      itemCount: _placesList.length,
+                                                      itemBuilder: (context, index) {
+                                                        return ListTile(
+                                                          onTap: () async {
+                                                            List<Location>locations = await locationFromAddress(
+                                                                _placesList[index]['description']
+                                                            );
+                                                            print(locations.last.longitude);
+                                                            LatLng t = LatLng(locations.last.latitude, locations.last.longitude);
+                                                            start = StopLocation(t, "Starting Point");
+                                                            start?.isStartingPoint = true;
 
-                                                        Navigator.pop(context);
+                                                            Navigator.pop(context);
+                                                          },
+                                                          title: Text(_placesList[index]['description']),
+                                                        );
                                                       },
-                                                      title: Text(_placesList[index]['description']),
-                                                    );
-                                                  })),
-                                        ]))));
+                                                  )
+                                              ),
+                                            ]
+                                        )
+                                    )
+                                )
+                            );
                           },
-                        )),
+                        )
+                    ),
+
                     const SizedBox(height: 15),
+
                     Container(
                         padding: EdgeInsets.all(12.5),
                         height: 50,
@@ -307,9 +386,7 @@ class MapsPageState extends State<MapsPage> {
                           child: Text(
                             "Mid Point (Optional)",
                             style: TextStyle(
-                              // color: Colors.grey,
                               fontSize: 18,
-                              // fontWeight: FontWeight.bold,
                             ),
                           ),
                           onTap: () {
@@ -318,10 +395,7 @@ class MapsPageState extends State<MapsPage> {
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
                                 builder: (context) => Container(
-                                    height: MediaQuery.of(context)
-                                        .size
-                                        .height *
-                                        0.90,
+                                    height: MediaQuery.of(context).size.height * 0.90,
                                     decoration: const BoxDecoration(
                                       color: Colors.white,
                                       borderRadius:
@@ -333,34 +407,42 @@ class MapsPageState extends State<MapsPage> {
                                       ),
                                     ),
                                     child: Padding(
-                                        padding: const EdgeInsets
-                                            .fromLTRB(
-                                            15, 25, 15, 15),
-                                        child: Column(children: [
-                                          TextFormField(
-                                              controller: _Tcontroller,
-                                              decoration: InputDecoration(
-                                                  prefixIcon: Icon(Icons.add_location_rounded, size: 25),
-                                                  hintText: 'Mid point to your journey')),
-                                          Expanded(
-                                              child: ListView.builder(
-                                                  itemCount: _placesList.length,
-                                                  itemBuilder: (context, index) {
-                                                    return ListTile(
-                                                      onTap: () async {
-                                                        List<Location>locations = await locationFromAddress(_placesList[index]['description']);
-                                                        print(locations.last.longitude);
-                                                        print(locations.last.latitude);
+                                        padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
+                                        child: Column(
+                                            children: [
+                                              TextFormField(
+                                                  controller: _Tcontroller,
+                                                  decoration: InputDecoration(
+                                                      prefixIcon: Icon(Icons.add_location_rounded, size: 25),
+                                                      hintText: 'Mid point to your journey')),
+                                              Expanded(
+                                                  child: ListView.builder(
+                                                      itemCount: _placesList.length,
+                                                      itemBuilder: (context, index) {
+                                                        return ListTile(
+                                                          onTap: () async {
+                                                            List<Location>locations = await locationFromAddress(_placesList[index]['description']);
+                                                            print(locations.last.longitude);
+                                                            print(locations.last.latitude);
 
-                                                        Navigator.pop(context);
+                                                            Navigator.pop(context);
+                                                          },
+                                                          title: Text(_placesList[index]['description']),
+                                                        );
                                                       },
-                                                      title: Text(_placesList[index]['description']),
-                                                    );
-                                                  })),
-                                        ]))));
+                                                  )
+                                              ),
+                                            ]
+                                        ),
+                                    )
+                                )
+                            );
                           },
-                        )),
+                        )
+                    ),
+
                     const SizedBox(height: 15),
+
                     Container(
                         padding: EdgeInsets.all(12.5),
                         height: 50,
@@ -374,7 +456,7 @@ class MapsPageState extends State<MapsPage> {
                         ),
                         child: GestureDetector(
                           child: Text(
-                            "Your Destination",
+                            end == null ? "Your Destination" : end!.name,
                             style: TextStyle(
                               fontSize: 18,
                             ),
@@ -385,10 +467,7 @@ class MapsPageState extends State<MapsPage> {
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
                                 builder: (context) => Container(
-                                    height: MediaQuery.of(context)
-                                        .size
-                                        .height *
-                                        0.90,
+                                    height: MediaQuery.of(context).size.height * 0.90,
                                     decoration: const BoxDecoration(
                                       color: Colors.white,
                                       borderRadius:
@@ -418,30 +497,34 @@ class MapsPageState extends State<MapsPage> {
                                                     itemBuilder: (context, index) {
                                                       return ListTile(
                                                         onTap: () async {
-                                                          List<Location>locations = await locationFromAddress(_placesList[index]['description']);
+                                                          List<Location>locations = await locationFromAddress(
+                                                              _placesList[index]['description']
+                                                          );
                                                           print(locations.last.longitude);
-
-                                                          // LatLng t = LatLng(locations.last.latitude, locations.last.longitude);
-                                                          // end = StopLocation(t, "Destination Point");
-                                                          // end?.isDestination = true;
 
                                                           LatLng t = LatLng(31.48170416692978, 74.30305701092631);
                                                           end = StopLocation(t, "FAST NUCES Lahore");
                                                           end?.isDestination = true;
+                                                          end?.name = "FAST NUCES Lahore";
 
                                                           Navigator.pop(context);
                                                         },
                                                         title: Text(_placesList[index]['description']),
                                                       );
-                                                    })),
+                                                    },
+                                                )
+                                            ),
                                           ]
                                         )
                                     )
                                 )
                             );
                           },
-                        )),
+                        ),
+                    ),
+
                     const SizedBox(height: 40),
+
                     GestureDetector(
                         child: Container(
                             padding: EdgeInsets.fromLTRB(140, 0, 0, 0),
@@ -456,37 +539,37 @@ class MapsPageState extends State<MapsPage> {
                                 width: 2,
                               ),
                             ),
-                            child: Row(children: [
-                              Icon(
-                                Icons.check_box_rounded,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                "Done",
-                                style: TextStyle(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.check_box_rounded,
                                   color: Colors.white,
-                                  fontSize: 18,
+                                  size: 22,
                                 ),
-                              ),
-                            ])),
-                        onTap: () async{
+                                const SizedBox(width: 12),
+                                Text(
+                                  "Done",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ],
+                            )
+                        ),
+                        onTap: () async {
+
                           Navigator.pop(context);
 
                           if (start != null && end != null){
-                            List<StopLocation> result = await rh.getComputedPath(start! , end! , "Minimum Total Distance");
+                            List<StopLocation> result = await rh.getComputedPath(start! , end! , dropdownValue);
 
                             if(result.length != 0){
 
                               setState(() {
                                 ic = const Icon(Icons.list);
                                 _isPathComputed = true;
-
-                                //apply the algo correspondingly , update the bus stops/stations
-
                                 locationsToDisplay.clear();
-                                locationsToDisplay.add(userLoc!);
                                 locationsToDisplay.addAll(result);
 
                                 fillMarkers();
@@ -496,34 +579,42 @@ class MapsPageState extends State<MapsPage> {
                             }
                           }
 
-                        })
-                  ]))),
+                        },
+                    )
+                  ]
+              ),
+          ),
+      ),
     );
   }
 
   Future<void> loadData() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    Position position = await getUserCurrentLocation();
+    print("Current location obtained: $position");
+    userLoc = StopLocation(LatLng(position.latitude, position.longitude), 'My StopLocation', false, false, false, true);
+    start = userLoc;
+    start?.isStartingPoint = true;
+    start?.name = "Your Location";
+
     await rh.populateStations();
     locationsToDisplay.addAll(rh.stations);
 
-    getUserCurrentLocation().then((value) async {
-
-      print("Current location obtained: $value");
-      userLoc = StopLocation(LatLng(value.latitude, value.longitude), 'My StopLocation',
-          false, false, false, true);
-      start = userLoc;
-      start?.isStartingPoint = true;
-      locationsToDisplay.insert(0, userLoc!);
-
-      setState(() {
-        fillMarkers();
-      });
+    setState(() {
+      isLoading = false;
+      fillMarkers();
     });
+
   }
 
   @override
   void initState() {
     super.initState();
     loadData();
+
 
     _Tcontroller.addListener(() {
       onChange();
@@ -561,9 +652,9 @@ class MapsPageState extends State<MapsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: null,
 
+   return  isLoading? Center(child: CircularProgressIndicator(),): Scaffold(
+        appBar: null,
         body: Stack(
           children: [
             // Widget of Google Maps
@@ -575,16 +666,16 @@ class MapsPageState extends State<MapsPage> {
                 child: GoogleMap(
                   onMapCreated: _onMapCreated,
                   mapType: MapType.normal,
+                  myLocationEnabled: true,
                   initialCameraPosition: CameraPosition(
                     target: userLoc != null ? userLoc!.latts_longs : _center,
                     zoom: 15.0,
                   ),
-                  markers: Set<Marker>.of(_marker),
+                  markers:Set<Marker>.of(_marker),
                   myLocationButtonEnabled: false,
                   tiltGesturesEnabled: true,
                   scrollGesturesEnabled: true,
                   zoomGesturesEnabled: true,
-                  zoomControlsEnabled: false,
                   polylines: _polylines,
                 ),
               ),
@@ -605,7 +696,7 @@ class MapsPageState extends State<MapsPage> {
                   margin: const EdgeInsets.fromLTRB(10, 30, 10, 10),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                   child:  DropdownButtonHideUnderline(
-                    child: d,
+                    child: DropDown(onValueChanged: onDropdownValueChanged),
                   )),
             ),
             // List View
@@ -619,7 +710,9 @@ class MapsPageState extends State<MapsPage> {
                   padding: EdgeInsets.all(10),
                   margin: EdgeInsets.fromLTRB(0, 80, 0, 0),
                   child: BusStopListView(
-                      busStops: locationsToDisplay.getRange(1, locationsToDisplay.length).toList()),
+                      busStops: locationsToDisplay.getRange(1, locationsToDisplay.length).toList(),
+                      onLocationSelected: onListRowSelected,
+                  ),
                 ),
               ),
             ),
@@ -637,22 +730,7 @@ class MapsPageState extends State<MapsPage> {
                   heroTag: "btn1",
                   onPressed: () {
                     if (_isPathComputed) {
-                      setState(() {
-                        rh.graph.clear();
-                        _isMapVisible = true;
-                        ic = const Icon(Icons.directions);
-                        _isPathComputed = false;
-
-                        locationsToDisplay.clear();
-                        if (userLoc != null) {
-                          locationsToDisplay.add(userLoc!);
-                        }
-                        locationsToDisplay.addAll(rh.stations);
-
-                        fillMarkers();
-                        _polylines.clear();
-
-                      });
+                      endPathFindingSession();
                     }
 
                   },
@@ -673,32 +751,29 @@ class MapsPageState extends State<MapsPage> {
                   this.showPageForSearchingTerminalLocations();
                 }
                 else {
-                  setState(() {
-                    rh.graph.clear();
-                    _isMapVisible = !_isMapVisible;
-                    if (_isMapVisible) {
-                      ic = Icon(Icons.list);
-                    } else {
-                      ic = Icon(Icons.map);
-                    }
-                  });
+                  makeTransitionBetween_Map_ListView();
                 }
               },
               child: ic,
+              elevation: 10,
             ),
           ],
-        ));
+        )
+   );
   }
 }
 
 class DropDown extends StatefulWidget {
-  const DropDown({super.key});
+  final ValueChanged<String> onValueChanged;
+
+  DropDown({required this.onValueChanged});
 
   @override
   State<DropDown> createState() => DropDownState();
 }
 
 class DropDownState extends State<DropDown> {
+
   final List<String> list = <String>[
     'Minimum Walking Distance',
     'Minimum Total Distance',
@@ -706,9 +781,6 @@ class DropDownState extends State<DropDown> {
   ];
   String dropdownValue = "Minimum Walking Distance";
 
-  DropDown() {
-    dropdownValue = list.first;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -726,6 +798,7 @@ class DropDownState extends State<DropDown> {
         setState(() {
           dropdownValue = value!;
         });
+        widget.onValueChanged(dropdownValue);
       },
       dropdownStyleData: DropdownStyleData(
         //width:  MediaQuery.of(context).size.width,
@@ -750,9 +823,10 @@ class DropDownState extends State<DropDown> {
 }
 
 class BusStopListView extends StatelessWidget {
-  final List<StopLocation> busStops;
 
-  BusStopListView({required this.busStops}) {}
+  final List<StopLocation> busStops;
+  final ValueChanged<LatLng> onLocationSelected;
+  BusStopListView({required this.busStops,required this.onLocationSelected}) {}
 
   @override
   Widget build(BuildContext context) {
@@ -761,7 +835,7 @@ class BusStopListView extends StatelessWidget {
         itemCount: busStops.length,
         itemBuilder: (BuildContext context, int index) {
           return ListTile(
-            //TODO: subtitle would be decided on the basis of boolean values in the Location Class
+
             subtitle: Text(busStops[index].getStationTypesInString()),
             title: Text(busStops[index].name),
             trailing: Icon(Icons.directions_bus),
@@ -769,8 +843,7 @@ class BusStopListView extends StatelessWidget {
             tileColor: Colors.white,
 
             onTap: () {
-              _launchUrl(busStops[index].latts_longs.latitude,
-                  busStops[index].latts_longs.longitude);
+              onLocationSelected(LatLng(busStops[index].latts_longs.latitude, busStops[index].latts_longs.longitude));
             },
             splashColor: Colors.grey,
             shape: RoundedRectangleBorder(
@@ -781,26 +854,13 @@ class BusStopListView extends StatelessWidget {
         },
         separatorBuilder: (context, index) => SizedBox(
               height: 10,
-            ));
+        )
+    );
   }
 
-  Future<void> _launchUrl(double latitude, double longitude) async {
-    String googleMapsUrl =
-        'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
-    if (await canLaunch(googleMapsUrl)) {
-      await launch(
-        googleMapsUrl,
-        forceSafariVC: false,
-        universalLinksOnly: true,
-        headers: {'referer': 'https://www.google.com/'},
-      );
-    } else {
-      throw 'Could not open the map.';
-    }
-  }
 }
 
-void showActionSheet(BuildContext context, String busStopName) {
+void showActionSheet_On_Station_Start_Marker_Press(BuildContext context, String locationType,double latts , double longs) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
@@ -808,7 +868,7 @@ void showActionSheet(BuildContext context, String busStopName) {
       //TODO: make a check that if the location is already saved then there is no need of keeping the save button active
 
       title: Text(
-        'Station',
+        locationType,
         style: TextStyle(fontSize: 20, color: Colors.black54),
       ),
       message: const Text(
@@ -825,17 +885,10 @@ void showActionSheet(BuildContext context, String busStopName) {
         ),
       ),
       actions: <CupertinoActionSheetAction>[
+
         CupertinoActionSheetAction(
           onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text(
-            'Save',
-            style: TextStyle(color: Colors.blue),
-          ),
-        ),
-        CupertinoActionSheetAction(
-          onPressed: () {
+            launchUrl(latts,longs);
             Navigator.pop(context);
           },
           child: const Text(
@@ -846,4 +899,71 @@ void showActionSheet(BuildContext context, String busStopName) {
       ],
     ),
   );
+}
+
+void showActionSheet_On_Dest_Marker_Press(BuildContext context,String locationName ,double latts , double longs, String id) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext context) => CupertinoActionSheet(
+      //TODO: make a check that if the location is already saved then there is no need of keeping the save button active
+
+      title: Text(
+        'Your Destination',
+        style: TextStyle(fontSize: 20, color: Colors.black54),
+      ),
+      message: const Text(
+        'Do you want to save or open it on Google Maps?',
+        style: TextStyle(fontSize: 15, color: Colors.black54),
+      ),
+      cancelButton: CupertinoActionSheetAction(
+        onPressed: () {
+          Navigator.pop(context);
+        },
+        child: const Text(
+          'Cancel',
+          style: TextStyle(color: Colors.blue),
+        ),
+      ),
+      actions: <CupertinoActionSheetAction>[
+
+        CupertinoActionSheetAction(
+          onPressed: () {
+            DbHandler().loadSavedPlaceToDb(locationName,id,LatLng(latts,longs));
+            Navigator.pop(context);
+          },
+          child: const Text(
+            'Save',
+            style: TextStyle(color: Colors.blue),
+          ),
+        ),
+        CupertinoActionSheetAction(
+          onPressed: () {
+            launchUrl(latts,longs);
+            Navigator.pop(context);
+          },
+          child: const Text(
+            'Open on Google Maps',
+            style: TextStyle(color: Colors.blue),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+
+Future<void> launchUrl(double latitude, double longitude) async {
+  String googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+  if (await canLaunch(googleMapsUrl)) {
+    await launch(
+      googleMapsUrl,
+      forceSafariVC: false,
+      universalLinksOnly: true,
+      headers: {'referer': 'https://www.google.com/'},
+    );
+  }
+  else {
+    throw 'Could not open the map.';
+  }
 }

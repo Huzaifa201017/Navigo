@@ -5,15 +5,52 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_flutter_platform_interface/src/types/location.dart';
 
 class DbHandler {
   var db = FirebaseFirestore.instance;
-  Future<void> loadSavedPlaceToDb(String name,  String id) async{
 
+  Future<void> loadSavedPlaceToDb(String name,  String id, LatLng location) async{
+    db.collection('Users').doc(id).set(
+        {
+          'savedPlaces': FieldValue.arrayUnion(
+            [
+                {
+                  'name': name,
+                  'lattitude': location.latitude,
+                  'longitude': location.longitude
+                },
+            ]
+          )
+
+        }
+    );
   }
-  // Future<List<Location>> fetchSavedPlaceFromDb(String id) async{
-  //   return null;
-  // }
+  Future<List<StopLocation>> fetchSavedPlaceFromDb(String id) async {
+
+    final docRef = db.collection("Users").doc(id);
+    List<StopLocation> result = [];
+
+    try {
+      DocumentSnapshot doc = await docRef.get();
+      final data = doc.data();
+
+      if (data != null) {
+        final dataMap = data as Map<String, dynamic>;
+        var list = dataMap['savedPlaces'] as List<dynamic>;
+        list.forEach((place) {
+          result.add(StopLocation(LatLng(place['lattitude'], place['longitude'] ), place['name']));
+        });
+
+      } else {
+        print("No Data Found!");
+      }
+    } catch(e) {
+      print("Error getting document: $e");
+    }
+    return result;
+  }
+
   Future<void> copyDatabase() async {
     // Get the path to the app's database directory
     String databasesPath = await getDatabasesPath();
@@ -26,7 +63,6 @@ class DbHandler {
 
     // Check if the database file already exists
     bool exists = await databaseExists(dbPath);
-    print(dbPath);
 
     // Delete the database
     // await deleteDatabase(dbPath);
@@ -54,6 +90,7 @@ class DbHandler {
     db.close();
     return list;
   }
+
   Future<List<Map>> getLocations() async {
     var db = await this.open_Database();
     List<Map> list = await db.rawQuery('select * from "Locations"');
@@ -61,27 +98,7 @@ class DbHandler {
     return list;
   }
 
-  // import 'package:sqflite/sqflite.dart';
-  // import 'package:path/path.dart';
 
-  // Future<Database> openDatabase() async {
-  //   String databasesPath = await getDatabasesPath();
-  //   String path = join(databasesPath, 'my_database.db');
-  //
-  //   // Copy the database from assets if it doesn't exist
-  //   ByteData data = await rootBundle.load(join("assets", "my_database.db"));
-  //   List<int> bytes =
-  //   data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-  //   await File(path).writeAsBytes(bytes);
-  //
-  //   // Open the database
-  //   return openDatabase(path);
-  // }
-  //
-  // Future<List<Map<String, dynamic>>> getItems() async {
-  //   Database db = await openDatabase();
-  //   return db.query('my_table');
-  // }
 
 
 }

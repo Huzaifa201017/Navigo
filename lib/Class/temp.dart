@@ -7,6 +7,9 @@ class Node {
 
   Node(this.value, this.distance);
 }
+void func(String n){
+  n = "asdas";
+}
 void Print(List<int> path, int currNode){
   if (path[currNode] == -2){
     print(currNode);
@@ -51,7 +54,9 @@ void findMinPath(Map<int,List<Node>> graph, int s, int goal) {
 
 }
 void main() {
-
+  String n = "Huz";
+  func(n);
+  print(n);
   // Map<int, List<Node>> graph = {
   //   0: [Node(1, 7), Node(2, 5)],
   //   1: [Node(2, 2), Node(3, 1)],

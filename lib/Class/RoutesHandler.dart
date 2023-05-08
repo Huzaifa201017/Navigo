@@ -18,12 +18,14 @@ class Node {
 
   Node(this.value, this.distance);
 }
+
 class RoutesHandler {
 
   List<StopLocation> stations = [];
   DbHandler db = DbHandler();
   Map<int,StopLocation> locations = {};
   Map<int,List<Node>> graph = {};
+  bool isCalculatingNextPath = false;
 
   RoutesHandler() {}
 
@@ -79,65 +81,6 @@ class RoutesHandler {
     return lats_langs;
   }
 
-  // Future<double> getDistance(LatLng startLocation, LatLng endLocation) async {
-  //
-  //   List<LatLng> polylineCoordinates = [];
-  //   PolylinePoints polylinePoints = PolylinePoints();
-  //   String googleAPiKey = "AIzaSyApvWQgBKFUgwcJ91suH3wGogD4WhAa6WM";
-  //
-  //   PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-  //     googleAPiKey,
-  //     PointLatLng(startLocation.latitude, startLocation.longitude),
-  //     PointLatLng(endLocation.latitude, endLocation.longitude),
-  //     travelMode: TravelMode.walking,
-  //   );
-  //
-  //   if (result.points.isNotEmpty) {
-  //     result.points.forEach((PointLatLng point) {
-  //       polylineCoordinates.add(LatLng(point.latitude, point.longitude));
-  //     });
-  //   } else {
-  //     print(result.errorMessage);
-  //   }
-  //
-  //   //polyline Coordinates is the List of longitude and latitude.
-  //   double totalDistance = 0;
-  //   for (var i = 0; i < polylineCoordinates.length - 1; i++) {
-  //     totalDistance += Geolocator.distanceBetween(
-  //         polylineCoordinates[i].latitude,
-  //         polylineCoordinates[i].longitude,
-  //         polylineCoordinates[i + 1].latitude,
-  //         polylineCoordinates[i + 1].longitude);
-  //
-  //   }
-  //
-  //   return totalDistance;
-  // }
-  //
-  // Future<int> getClosestStation(StopLocation node) async{
-  //   double minDist = double.infinity;
-  //   int nodeNum = 0;
-  //   List<int> keys = locations.keys.toList();
-  //   for (var i = 0; i < keys.length; i++) {
-  //     double dist = await getDistance(node.latts_longs, locations[keys[i]]!.latts_longs);
-  //     if (dist < minDist) {
-  //       minDist = dist;
-  //       nodeNum = keys[i];
-  //     }
-  //   }
-  //
-  //   print(minDist);
-  //   return  nodeNum;
-  // }
-  //
-  // Future<void> Testfunc(StopLocation start) async{
-  //   int closestStation = await getClosestStation(start);
-  //   print(closestStation);
-  //   if (locations[closestStation] != null) {
-  //     print("Closest Stations is: " + locations[closestStation]!.name);
-  //   }
-  // }
-
   void Print(List<int> path, int currNode, List<StopLocation> result){
     if (path[currNode] == -2){
       print(locations[currNode]!.name);
@@ -150,106 +93,304 @@ class RoutesHandler {
     }
   }
 
-  int getClosestStation(StopLocation node) {
-    double minDist = double.infinity;
-    int nodeNum = 0;
-    List<int> keys = locations.keys.toList();
-    for (var i = 0; i < keys.length; i++) {
-      double dist = Geolocator.distanceBetween(node.latts_longs.latitude, node.latts_longs.longitude,
-          locations[keys[i]]!.latts_longs.latitude, locations[keys[i]]!.latts_longs.longitude);
+  void addEdge(int nodeNum, Node node) {
 
-      if (dist < minDist) {
-        minDist = dist;
-        nodeNum = keys[i];
+    if ( !this.graph.containsKey(nodeNum) ) {
+      this.graph[nodeNum] = [node];
+    }else{
+      this.graph[nodeNum]!.add(node);
+    }
+
+  }
+
+  void findClosestStation(StopLocation terminalLocation) {
+
+    num minDist_Metro = double.infinity;
+    num minDist_Speedo = double.infinity;
+    int nodeNum_Metro = 0,nodeNum_Speedo = 0 ;
+
+    List<int> keys = locations.keys.toList();
+
+    for (var i = 0; i < keys.length; i++) {
+
+      if (locations[keys[i]]!.isMetro) {
+
+        double dist1 = Geolocator.distanceBetween(terminalLocation.latts_longs.latitude, terminalLocation.latts_longs.longitude,
+            locations[keys[i]]!.latts_longs.latitude, locations[keys[i]]!.latts_longs.longitude);
+
+        if (dist1 < minDist_Metro) {
+          minDist_Metro = dist1;
+          nodeNum_Metro = keys[i];
+        }
+
+      }else if(locations[keys[i]]!.isSpeedo){
+
+        double dist2 = Geolocator.distanceBetween(terminalLocation.latts_longs.latitude, terminalLocation.latts_longs.longitude,
+            locations[keys[i]]!.latts_longs.latitude, locations[keys[i]]!.latts_longs.longitude);
+
+        if (dist2 < minDist_Speedo) {
+          minDist_Speedo = dist2;
+          nodeNum_Speedo = keys[i];
+        }
+
+      }
+
+    }
+
+    terminalLocation.nodeNum = this.locations.length+1;
+
+    this.locations[terminalLocation.nodeNum] = terminalLocation;
+    //print(this.locations.length);
+
+    if(terminalLocation.isStartingPoint){
+
+      if (minDist_Speedo < minDist_Metro){
+        addEdge(terminalLocation.nodeNum,Node(nodeNum_Speedo, minDist_Speedo));
+        print("Yes");
+      }else{
+        addEdge(terminalLocation.nodeNum,Node(nodeNum_Metro, minDist_Metro));
+      }
+
+
+    }else if(terminalLocation.isDestination){
+
+      if (minDist_Speedo < minDist_Metro) {
+        addEdge(nodeNum_Speedo,Node(terminalLocation.nodeNum,minDist_Speedo));
+      }else{
+        addEdge(nodeNum_Metro,Node(terminalLocation.nodeNum,minDist_Metro));
       }
     }
 
-    return  nodeNum;
   }
 
-  Future<void> findMinPath(Map<int,List<Node>> graph, int s, int goal,List<StopLocation> result ) async{
+  Future<void> getRouteWithShortestTotalDistance(Map<int,List<Node>> graph, int s, int goal,List<StopLocation> result ) async{
 
     int compareByAgeDesc(Node a, Node b) => a.distance.compareTo(b.distance);
     HeapPriorityQueue<Node> q = HeapPriorityQueue(compareByAgeDesc);
-    List<num> dist = List.filled(graph.length+1, 1.0/0.0);
-    List<int> path = List.filled(graph.length+1, -1);
+    List<num> dist = List.filled(locations.length+1, 1.0/0.0);
+    List<int> path = List.filled(locations.length+1, -1);
 
     dist[s] = 0;
     path[s] = -2;
     q.add(Node(s,0));
+
     while(! q.isEmpty) {
 
       Node u = q.first;
       q.removeFirst();
+
       if(u.value == goal){
+
+        print(dist[u.value]);
         q.clear();
         break;
+
       }
 
-      graph[u.value]!.forEach((node) {
+      for(int i=0 ; i < graph[u.value]!.length ; i++){
+
+        Node node = graph[u.value]![i];
 
         int v = node.value;
         num weight = node.distance;
 
+
+        if( !( (this.locations[u.value]!.isMetro && this.locations[v]!.isMetro) ||
+               (this.locations[u.value]!.route_num == this.locations[v]!.route_num) ) ){
+
+          // if (weight > 1000){
+          //   continue;
+          // }
+          // if (this.locations[u.value]!.name == "Nadeem Chowk" && this.locations[v]!.name == "Model Town"){
+          //   print("This edge weight is :"+ weight.toString());
+          // }
+          if (!this.locations[u.value]!.isStartingPoint){
+            weight *= 3.1;
+          }
+
+
+        }
+
+
+        if (dist[u.value] + weight < dist[v] ){
+          path[v] = u.value;
+          dist[v] = dist[u.value] + weight;
+
+          q.add(Node(v,dist[v]));
+        }
+      }
+
+    }
+    Print(path,goal, result);
+
+  }
+
+  Future<void> getRouteWithShortestWalkingDistance(Map<int,List<Node>> graph, int s, int goal,List<StopLocation> result ) async{
+
+    int compareByAgeDesc(Node a, Node b) => a.distance.compareTo(b.distance);
+    HeapPriorityQueue<Node> q = HeapPriorityQueue(compareByAgeDesc);
+    List<num> dist = List.filled(locations.length+1, 1.0/0.0);
+    List<int> path = List.filled(locations.length+1, -1);
+
+    dist[s] = 0;
+    path[s] = -2;
+    q.add(Node(s,0));
+
+    while(! q.isEmpty) {
+
+      Node u = q.first;
+      q.removeFirst();
+
+      if(u.value == goal){
+
+        print("Reached at Line 246");
+        print("Distance: " + dist[u.value].toString());
+        Print(path,goal, result);
+        q.clear();
+        break;
+
+      }
+
+      for(int i=0 ; i < graph[u.value]!.length ; i++){
+
+        Node node = graph[u.value]![i];
+
+        int v = node.value;
+        num weight = 0;
+
+
+        if( !( (this.locations[u.value]!.isMetro && this.locations[v]!.isMetro) ||
+               (this.locations[u.value]!.route_num == this.locations[v]!.route_num) ||
+                this.locations[u.value]!.isStartingPoint || this.locations[u.value]!.isDestination ) ) {
+
+          weight = node.distance;
+        }
         if (dist[u.value] + weight < dist[v] ){
           path[v] = u.value;
           dist[v] = dist[u.value] + weight;
           q.add(Node(v,dist[v]));
         }
 
-      });
+      }
+
     }
-    Print(path,goal, result);
 
   }
 
+  Future<void> getRouteWithMinimumStationSwitching(Map<int,List<Node>> graph, int s, int goal,List<StopLocation> result ) async{
+
+    int compareByAgeDesc(Node a, Node b) => a.distance.compareTo(b.distance);
+    HeapPriorityQueue<Node> q = HeapPriorityQueue(compareByAgeDesc);
+    List<num> dist = List.filled(locations.length+1, 1.0/0.0);
+    List<int> path = List.filled(locations.length+1, -1);
+
+    dist[s] = 0;
+    path[s] = -2;
+    q.add(Node(s,0));
+
+    while(! q.isEmpty) {
+
+      Node u = q.first;
+      q.removeFirst();
+
+      if(u.value == goal){
+
+        print("Reached at Line 296");
+        Print(path,goal, result);
+        q.clear();
+        break;
+
+      }
+
+      for(int i=0 ; i < graph[u.value]!.length ; i++){
+
+        Node node = graph[u.value]![i];
+
+        int v = node.value;
+        num weight = 0;
+
+
+        if( !( (this.locations[u.value]!.isMetro && this.locations[v]!.isMetro) ||
+            (this.locations[u.value]!.route_num == this.locations[v]!.route_num)) ) {
+
+          if (node.distance > 1000){
+            continue;
+          }
+
+          weight = 1;
+        }
+        if (dist[u.value] + weight < dist[v] ) {
+          path[v] = u.value;
+          dist[v] = dist[u.value] + weight;
+          q.add( Node(v,dist[v]) );
+        }
+
+      }
+
+    }
+  }
   Future<List<StopLocation>> getComputedPath(StopLocation start , StopLocation end , String criteria) async {
-    // Testfunc(start);
 
     // get the graph if it is not already fetched
-    if (graph.isEmpty){
-      print("Yes");
+    if (graph.isEmpty) {
       await readGraph();
     }
 
     List<StopLocation> result = [];
     // if graph is not empty(empty may be bcz of some synchronization issues) , then apply the algo.
-    if(! graph.isEmpty){
+    if(! graph.isEmpty) {
       //Get closest possible station from start and end
-      int startStationIndex = getClosestStation(start);
-      int endStationIndex = getClosestStation(end);
+      if (! isCalculatingNextPath) {
+        findClosestStation(start);
+        findClosestStation(end);
+      }
+      //print(end.nodeNum);
+      //getRouteWithShortestTotalDistance(graph,start.nodeNum,end.nodeNum,result);
+      //print("Reached at Line 296");
+      //getRouteWithShortestWalkingDistance(graph,start.nodeNum,end.nodeNum,result);
 
-      result.add(start);
-      findMinPath(graph,startStationIndex,endStationIndex,result);
-      //result.addAll([locations[21]!, locations[20]!]);
-      result.add(end);
+      if (criteria == "Minimum Total Distance"){
 
+        print("Criteria: Minimum Total Distance");
+        getRouteWithShortestTotalDistance(graph,start.nodeNum,end.nodeNum,result);
 
+      }else if(criteria == "Minimum Walking Distance"){
+        print("Criteria: Minimum Walking Distance");
+        getRouteWithShortestWalkingDistance(graph,start.nodeNum,end.nodeNum,result);
+      }else{
+        print("Criteria: Minimum Station Switching");
+        getRouteWithMinimumStationSwitching(graph,start.nodeNum,end.nodeNum,result);
+      }
     }
     return result;
 
   }
 
-  Future<List<StopLocation>> getNextPossiblePath(StopLocation start , StopLocation end,String criteria,int edgeStart , int edgeEnd){
-    graph[edgeStart]!.remove(edgeEnd);
-
+  Future<List<StopLocation>> getNextPossiblePath(StopLocation start , StopLocation end,String criteria,int edgeStart , int edgeEnd) async{
+    isCalculatingNextPath = true;
     // remove the edge, which the user clicked to remove.
     for(int i = 0 ; i < graph[edgeStart]!.length ; i++){
       if (graph[edgeStart]![i].value == edgeEnd){
         graph[edgeStart]!.removeAt(i);
+        print("Removed" );
         break;
       }
     }
     for(int i = 0 ; i < graph[edgeEnd]!.length ; i++){
       if (graph[edgeEnd]![i].value == edgeStart){
         graph[edgeEnd]!.removeAt(i);
+        print("Removed" );
         break;
       }
     }
 
-    print(edgeStart.toString() + " "+ edgeEnd.toString());
-    return getComputedPath(start,end,criteria);
+    print("Edge Removed:" + edgeStart.toString() + " "+ edgeEnd.toString());
+    print("Starting and Destination: " + start.isStartingPoint.toString() + end.isDestination.toString());
+    List<StopLocation> result =  await getComputedPath(start,end,criteria);
+    print("New result length: " + result.length.toString() );
+    return result;
   }
+
   void PrintLocations(){
     locations.forEach((key, value) {
       locations[key]?.Print();

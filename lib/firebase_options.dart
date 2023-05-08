@@ -17,7 +17,10 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -25,7 +28,10 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
@@ -43,16 +49,6 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCUfFHfU6G9k0_ICvVw36_g2VdE7FDCnGI',
-    appId: '1:617458806919:web:06eb00bf328e8b7b750822',
-    messagingSenderId: '617458806919',
-    projectId: 'navigo-55abb',
-    authDomain: 'navigo-55abb.firebaseapp.com',
-    storageBucket: 'navigo-55abb.appspot.com',
-    measurementId: 'G-RNNNF41XF6',
-  );
-
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBY6Edl2J8S8WUUlNwSNAU5tvyzlQpjV20',
     appId: '1:617458806919:android:c7d3e05671542169750822',
@@ -62,17 +58,6 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAAOe-ZkEF7Tz9gg_Qiph37GMz8gzY2L20',
-    appId: '1:617458806919:ios:acd35b0f82472f83750822',
-    messagingSenderId: '617458806919',
-    projectId: 'navigo-55abb',
-    storageBucket: 'navigo-55abb.appspot.com',
-    androidClientId: '617458806919-jq0h8beh7vgkd67tvalg6cql5muoqjpd.apps.googleusercontent.com',
-    iosClientId: '617458806919-ds9i8ctgk3nturcm6i0d36d7iqoamn1s.apps.googleusercontent.com',
-    iosBundleId: 'com.example.navigo',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyAAOe-ZkEF7Tz9gg_Qiph37GMz8gzY2L20',
     appId: '1:617458806919:ios:acd35b0f82472f83750822',
     messagingSenderId: '617458806919',

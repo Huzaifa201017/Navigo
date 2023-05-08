@@ -5,7 +5,9 @@ import 'package:navigo/HomePage.dart';
 import 'package:navigo/SignUpPage.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:navigo/Class/Traveller.dart';
+import 'package:navigo/Class/AuthenticateUser.dart';
 import 'Toast.dart';
+import 'package:flutter/cupertino.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -15,7 +17,6 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-
   final _formKey = GlobalKey<FormState>();
 
   Future<void> navigateToHomePage() async {
@@ -31,15 +32,18 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> login() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // Perform login functionality
+
       FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+
         Traveller u = Traveller.Instance(value.user!.uid);
-        // print("User id: "+u.id+" "+value.user!.uid);
         Message().show("Success!");
         navigateToHomePage();
+
       }).onError((error, stackTrace) {
+
         print("Error ${error.toString()}");
         Message().show('Error signing in with Google: ' + error.toString());
+
       });
     }
   }
@@ -48,9 +52,9 @@ class _LoginPageState extends State<LoginPage> {
     FirebaseServices().signInWithGoogle().then((user) {
 
       Traveller.Instance(FirebaseAuth.instance.currentUser!.uid);
-
       Message().show("Success!");
       navigateToHomePage();
+
     }).catchError((error) {
       print('Error signing in with Google: ' + error.toString());
     });
@@ -83,14 +87,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 Image.asset('assets/images/logo.png', width: 200, height: 200),
-                // Text(
-                //   'Welcome To Navigo!',
-                //   style: TextStyle(
-                //     fontSize: 32,
-                //     fontWeight: FontWeight.bold,
-                //     color: Colors.redAccent[700],
-                //   ),
-                // ),
+
                 TextFormField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -120,30 +117,58 @@ class _LoginPageState extends State<LoginPage> {
                     return null;
                   },
                 ),
-                SizedBox(height: 24),
+                SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: CupertinoButton.filled(
                     child: Text('Login'),
                     onPressed: () {
                       this.login();
                     },
-                  ),
+                  )
                 ),
                 SizedBox(height: 24),
+
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: Image.asset('assets/images/google.png', height: 24),
-                    label: Text('Login with Google'),
-                    onPressed: () {
+                  child: MaterialButton(
+                    onPressed: () async{
                       this.loginWithGoogle();
-
                     },
-                    style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white),
+                    color: Colors.white,
+                    elevation: 10,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 45.0,
+                          width: 30.0,
+                          decoration: BoxDecoration(
+
+                            image: DecorationImage(
+                              image:AssetImage('assets/images/google.png'),
+                              fit: BoxFit.cover,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 20,
+                        ),
+                        Text("Sign In with Google")
+                      ],
+                    ),
                   ),
+                  // child: OutlinedButton.icon(
+                  //   icon: Image.asset('assets/images/google.png', height: 24),
+                  //   label: Text('Login with Google'),
+                  //   onPressed: () {
+                  //     this.loginWithGoogle();
+                  //   },
+                  //   style: OutlinedButton.styleFrom(
+                  //       backgroundColor: Colors.red,
+                  //       foregroundColor: Colors.white),
+                  // ),
                 ),
                 SizedBox(height: 16),
                 Row(
