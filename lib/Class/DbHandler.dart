@@ -6,11 +6,20 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter_platform_interface/src/types/location.dart';
+import 'package:navigo/Toast.dart';
 
 class DbHandler {
   var db = FirebaseFirestore.instance;
 
   Future<void> loadSavedPlaceToDb(String name,  String id, LatLng location) async{
+    List<StopLocation> list = await fetchSavedPlaceFromDb(id);
+    for (int i = 0 ; i < list.length ; i++){
+      if (list[i].latts_longs == location){
+        Message().show("Already Saved!");
+        return ;
+      }
+    }
+
     db.collection('Users').doc(id).set(
         {
           'savedPlaces': FieldValue.arrayUnion(
@@ -24,7 +33,22 @@ class DbHandler {
           )
 
         }
-    );
+
+    ).catchError((error) {
+      // If the document doesn't exist, create a new one and add the array.
+      if (error.code == 'not-found') {
+        db.collection('Users').doc(id).set({
+          'savedPlaces': [
+            {
+              'name': name,
+              'lattitude': location.latitude,
+              'longitude': location.longitude
+            }
+          ]
+        });
+      }
+    });
+    Message().show("Saved Successfully!");
   }
   Future<List<StopLocation>> fetchSavedPlaceFromDb(String id) async {
 
@@ -96,6 +120,27 @@ class DbHandler {
     List<Map> list = await db.rawQuery('select * from "Locations"');
     db.close();
     return list;
+  }
+
+  Future<List<String>> getStationsForSpeedoRoute(int routeNum) async {
+    var db = await this.open_Database();
+    List<String> stationsList = [];
+    List<Map> list = await db.rawQuery('select * from "Locations" where routenum = $routeNum');
+    list.forEach((row) {
+      stationsList.add(row['LocationName']);
+    });
+
+    db.close();
+    return stationsList;
+  }
+
+  Future<List<Map>> getMetro() async {
+    List<Map> getMetroRoutes = [];
+    var db = await this.open_Database();
+    getMetroRoutes =
+    await db.rawQuery('select * from Locations where routenum = "-1"');
+    db.close();
+    return getMetroRoutes;
   }
 
 

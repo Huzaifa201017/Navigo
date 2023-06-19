@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:navigo/Widgets/SearchLocationsPage.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,61 +11,60 @@ import 'package:navigo/Class/Location.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:navigo/Class/DbHandler.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:http/http.dart' as http;
-import 'package:uuid/uuid.dart';
 import 'package:navigo/Class/Traveller.dart';
-
+import 'package:navigo/Widgets/SearchLocationsPage.dart';
+import 'package:navigo/Widgets/BottomSheetOnDirectionsButton.dart';
+import 'package:navigo/Toast.dart';
+import 'package:navigo/HomePage.dart';
 
 class MapsPage extends StatefulWidget {
-  const MapsPage({Key? key}) : super(key: key);
+  StopLocation? savedLocation = null;
+  MapsPage({Key? key, this.savedLocation}) : super(key: key);
 
   @override
   State<MapsPage> createState() => MapsPageState();
 }
-
+// class MapsPageState extends State<MapsPage> with AutomaticKeepAliveClientMixin<MapsPage>
 class MapsPageState extends State<MapsPage> {
-  // ----- Zain's --------
-  TextEditingController _Tcontroller = TextEditingController();
-  var uuid = Uuid();
-  String _sessionToken = '122344';
-  List<dynamic> _placesList = [];
-  // ----------------------
+  // @override
+  // bool get wantKeepAlive => true;
+
 
   late GoogleMapController mapController;
-  // icon for user location
-  BitmapDescriptor? myIcon;
   StreamSubscription<Position>? positionStream;
 
   RoutesHandler rh = RoutesHandler();
   final LatLng _center = const LatLng(31.51214443738609, 74.37939589382803);
-  bool _isMapVisible = true, _isPathComputed = false,  is_visible =false;
   Icon ic = const Icon(Icons.directions);
-  StopLocation? userLoc,start,end , midway;
+  final Traveller user = Traveller.Instance();
+  StopLocation? userLoc,start,end ;
 
-  Set<Polyline> _polylines = Set<Polyline>();
+  bool _isMapVisible = true, _isPathComputed = false,  is_visible =false,isLoading=true;
+
+  String dropdownValue = "Minimum Walking Distance"; // path finding criteria
+
   List<Marker> _marker = [];
   List<StopLocation> locationsToDisplay = [];
-  bool isLoading=false;
-  String dropdownValue = "Minimum Walking Distance";// path finding criteria
-  final Traveller user = Traveller.Instance();
+  List<String> _filteredData = [];
+  Map<String, LatLng> _places = {};
+  Set<Polyline> _polylines = Set<Polyline>();
+
 
   @override
   void dispose() {
     super.dispose();
-    /// don't forget to cancel stream once no longer needed
     positionStream?.cancel();
   }
-  void _moveCameraToLocation(LatLng location) {
-    setState(() {
-      mapController.animateCamera(CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: location,
-          zoom: 15.0,
-        ),
-      ));
-    });
 
+
+  void _moveCameraToLocation(LatLng location) {
+    mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+            CameraPosition(target: location, zoom: 15.0)
+        )
+    );
   }
+
   void makeTransitionBetween_Map_ListView(){
     setState(() {
       _isMapVisible = !_isMapVisible;
@@ -76,6 +76,7 @@ class MapsPageState extends State<MapsPage> {
       }
     });
   }
+
   void onListRowSelected(LatLng location) {
     makeTransitionBetween_Map_ListView();
     print(location.latitude.toString() + " " + location.longitude.toString());
@@ -83,23 +84,23 @@ class MapsPageState extends State<MapsPage> {
   }
 
   Future<void> onDropdownValueChanged(String newValue) async {
-    print(newValue);
-    if (start != null && end != null){
+    print("New Criteria = "+newValue);
+    dropdownValue = newValue;
+
+    if (start != null && end != null && _isPathComputed){
       locationsToDisplay.clear();
       rh.graph.clear();
+      rh.locations.remove(128);
+      rh.locations.remove(129);
       rh.isCalculatingNextPath = false;
-      dropdownValue = newValue;
 
       List<StopLocation> result = await rh.getComputedPath(start! , end! , dropdownValue);
 
       if(result.length != 0){
 
         setState(() {
-
           locationsToDisplay.addAll(result);
-
           fillMarkers();
-          locationsToDisplay.removeAt(0);
           fillPolyLines();
 
         });
@@ -108,22 +109,51 @@ class MapsPageState extends State<MapsPage> {
     }
   }
 
-  void endPathFindingSession(){
-    setState(() {
-      rh.graph.clear();
-      rh.isCalculatingNextPath = false;
-      end = null;
-      start = userLoc;
+  Future<void> onPressingDoneButton(List<StopLocation?> selectedLocations ) async{
+    start = selectedLocations[0];
+    end = selectedLocations[1];
+    end!.isDestination = true;
+    print("At line 121: Criteria Recieved: " + dropdownValue);
 
+    List<StopLocation> result = await rh.getComputedPath(start! , end! , dropdownValue);
+
+    if(result.length != 0) {
+
+      setState(() {
+        ic = const Icon(Icons.list);
+        _isPathComputed = true;
+        locationsToDisplay.clear();
+
+        locationsToDisplay.addAll(result);
+        print(locationsToDisplay[0].name);
+
+        fillMarkers();
+        fillPolyLines();
+      });
+
+    }else{
+      endPathFindingSession();
+      Message().show("Sorry! No appropriate route exists !");
+    }
+  }
+
+  void endPathFindingSession() {
+    setState(() {
+
+      rh.isCalculatingNextPath = false;
       _isMapVisible = true;
-      ic = const Icon(Icons.directions);
       _isPathComputed = false;
 
-      locationsToDisplay.clear();
-      locationsToDisplay.addAll(rh.stations);
+      ic = const Icon(Icons.directions);
 
-      fillMarkers();
+      locationsToDisplay.clear();
+      rh.graph.clear();
       _polylines.clear();
+      rh.locations.remove(128);
+      rh.locations.remove(129);
+
+      locationsToDisplay.addAll(rh.stations);
+      fillMarkers();
 
     });
   }
@@ -168,7 +198,7 @@ class MapsPageState extends State<MapsPage> {
     for (int i = 0; i < locationsToDisplay.length; i++) {
 
      if (locationsToDisplay[i].isStartingPoint) {
-        //Create the corresponding marker
+        // Create the corresponding marker
         _marker.add(
           Marker(
             markerId: MarkerId('$i'),
@@ -248,7 +278,6 @@ class MapsPageState extends State<MapsPage> {
                 setState(() {
 
                   locationsToDisplay.clear();
-                  locationsToDisplay.add(userLoc!);
                   locationsToDisplay.addAll(newResult);
 
                   fillMarkers();
@@ -258,10 +287,9 @@ class MapsPageState extends State<MapsPage> {
               }
               else {
                 endPathFindingSession();
+                Message().show("No further appropriate route exists !");
               }
             }
-
-            // rh.getDistance(locationsToDisplay[i].latts_longs, locationsToDisplay[i+1].latts_longs);
           },
         )
         );
@@ -270,7 +298,9 @@ class MapsPageState extends State<MapsPage> {
   }
 
   void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+    setState(() {
+      mapController = controller;
+    });
   }
 
   void showPageForSearchingTerminalLocations() {
@@ -278,376 +308,74 @@ class MapsPageState extends State<MapsPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-          height: MediaQuery.of(context).size.height * 0.50,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(25.0),
-              topRight: Radius.circular(25.0),
-            ),
-          ),
-          child: Padding(
-              padding: const EdgeInsets.fromLTRB(15, 30, 15, 15),
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Container(
-                        padding: EdgeInsets.all(12.5),
-                        height: 50,
-                        width: MediaQuery.of(context).size.width,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10.0),
-                          border: Border.all(
-                            color: Colors.grey,
-                            width: 2,
-                          ),
-                        ),
-                        child: GestureDetector(
-                          child: Text(
-                            start!.name,
-                            style: TextStyle(
-                              fontSize: 18,
-                            ),
-                          ),
-                          onTap: () {
-                            showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => Container(
-                                    height: MediaQuery.of(context).size.height * 0.90,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius:
-                                      BorderRadius.only(
-                                        topLeft:
-                                        Radius.circular(25.0),
-                                        topRight:
-                                        Radius.circular(25.0),
-                                      ),
-                                    ),
-                                    child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
-                                        child: Column(
-                                            children: [
-                                              TextFormField(
-                                                  controller:
-                                                  _Tcontroller,
-                                                  decoration: InputDecoration(
-                                                      prefixIcon: Icon(Icons.home_rounded),
-                                                      hintText: 'Your starting location'
-                                                  )
-                                              ),
-                                              Expanded(
-                                                  child: ListView.builder(
-                                                      itemCount: _placesList.length,
-                                                      itemBuilder: (context, index) {
-                                                        return ListTile(
-                                                          onTap: () async {
-                                                            List<Location>locations = await locationFromAddress(
-                                                                _placesList[index]['description']
-                                                            );
-                                                            print(locations.last.longitude);
-                                                            LatLng t = LatLng(locations.last.latitude, locations.last.longitude);
-                                                            start = StopLocation(t, "Starting Point");
-                                                            start?.isStartingPoint = true;
-
-                                                            Navigator.pop(context);
-                                                          },
-                                                          title: Text(_placesList[index]['description']),
-                                                        );
-                                                      },
-                                                  )
-                                              ),
-                                            ]
-                                        )
-                                    )
-                                )
-                            );
-                          },
-                        )
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    Container(
-                        padding: EdgeInsets.all(12.5),
-                        height: 50,
-                        width: MediaQuery.of(context).size.width,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10.0),
-                          border: Border.all(
-                            color: Colors.grey,
-                            width: 2,
-                          ),
-                        ),
-                        child: GestureDetector(
-                          child: Text(
-                            "Mid Point (Optional)",
-                            style: TextStyle(
-                              fontSize: 18,
-                            ),
-                          ),
-                          onTap: () {
-                            showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => Container(
-                                    height: MediaQuery.of(context).size.height * 0.90,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius:
-                                      BorderRadius.only(
-                                        topLeft:
-                                        Radius.circular(25.0),
-                                        topRight:
-                                        Radius.circular(25.0),
-                                      ),
-                                    ),
-                                    child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
-                                        child: Column(
-                                            children: [
-                                              TextFormField(
-                                                  controller: _Tcontroller,
-                                                  decoration: InputDecoration(
-                                                      prefixIcon: Icon(Icons.add_location_rounded, size: 25),
-                                                      hintText: 'Mid point to your journey')),
-                                              Expanded(
-                                                  child: ListView.builder(
-                                                      itemCount: _placesList.length,
-                                                      itemBuilder: (context, index) {
-                                                        return ListTile(
-                                                          onTap: () async {
-                                                            List<Location>locations = await locationFromAddress(_placesList[index]['description']);
-                                                            print(locations.last.longitude);
-                                                            print(locations.last.latitude);
-
-                                                            Navigator.pop(context);
-                                                          },
-                                                          title: Text(_placesList[index]['description']),
-                                                        );
-                                                      },
-                                                  )
-                                              ),
-                                            ]
-                                        ),
-                                    )
-                                )
-                            );
-                          },
-                        )
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    Container(
-                        padding: EdgeInsets.all(12.5),
-                        height: 50,
-                        width: MediaQuery.of(context).size.width,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10.0),
-                          border: Border.all(
-                            color: Colors.grey,
-                            width: 2,
-                          ),
-                        ),
-                        child: GestureDetector(
-                          child: Text(
-                            end == null ? "Your Destination" : end!.name,
-                            style: TextStyle(
-                              fontSize: 18,
-                            ),
-                          ),
-                          onTap: () {
-                            showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => Container(
-                                    height: MediaQuery.of(context).size.height * 0.90,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius:
-                                      BorderRadius.only(
-                                        topLeft:
-                                        Radius.circular(25.0),
-                                        topRight:
-                                        Radius.circular(25.0),
-                                      ),
-                                    ),
-                                    child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(15, 25, 15, 15),
-                                        child: Column(
-                                            children: [
-                                            TextFormField(
-                                                controller:
-                                                _Tcontroller,
-                                                decoration: InputDecoration(
-                                                    prefixIcon: Icon(Icons.approval_rounded, size: 25),
-                                                    hintText: 'Your endpoint location'
-                                                )
-                                            ),
-                                            Expanded(
-                                                child: ListView.builder(
-                                                    itemCount:
-                                                    _placesList.length,
-                                                    itemBuilder: (context, index) {
-                                                      return ListTile(
-                                                        onTap: () async {
-                                                          List<Location>locations = await locationFromAddress(
-                                                              _placesList[index]['description']
-                                                          );
-                                                          print(locations.last.longitude);
-
-                                                          LatLng t = LatLng(31.48170416692978, 74.30305701092631);
-                                                          end = StopLocation(t, "FAST NUCES Lahore");
-                                                          end?.isDestination = true;
-                                                          end?.name = "FAST NUCES Lahore";
-
-                                                          Navigator.pop(context);
-                                                        },
-                                                        title: Text(_placesList[index]['description']),
-                                                      );
-                                                    },
-                                                )
-                                            ),
-                                          ]
-                                        )
-                                    )
-                                )
-                            );
-                          },
-                        ),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    GestureDetector(
-                        child: Container(
-                            padding: EdgeInsets.fromLTRB(140, 0, 0, 0),
-                            height: MediaQuery.of(context).size.height*0.080,
-                            width: MediaQuery.of(context).size.width,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius:
-                              BorderRadius.circular(10.0),
-                              border: Border.all(
-                                color: Colors.red,
-                                width: 2,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.check_box_rounded,
-                                  color: Colors.white,
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  "Done",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ],
-                            )
-                        ),
-                        onTap: () async {
-
-                          Navigator.pop(context);
-
-                          if (start != null && end != null){
-                            List<StopLocation> result = await rh.getComputedPath(start! , end! , dropdownValue);
-
-                            if(result.length != 0){
-
-                              setState(() {
-                                ic = const Icon(Icons.list);
-                                _isPathComputed = true;
-                                locationsToDisplay.clear();
-                                locationsToDisplay.addAll(result);
-
-                                fillMarkers();
-                                fillPolyLines();
-                              });
-
-                            }
-                          }
-
-                        },
-                    )
-                  ]
-              ),
-          ),
+      builder: (context) => BottomSheetOnDirectionsButton(
+          userLocation: userLoc!.latts_longs,
+          start: start,
+          end: end,
+          onPressingDoneButton: onPressingDoneButton,
       ),
+
     );
   }
 
-  Future<void> loadData() async {
-    setState(() {
-      isLoading = true;
-    });
-
+  Future<void> storeUserLocation() async{
     Position position = await getUserCurrentLocation();
     print("Current location obtained: $position");
     userLoc = StopLocation(LatLng(position.latitude, position.longitude), 'My StopLocation', false, false, false, true);
     start = userLoc;
     start?.isStartingPoint = true;
     start?.name = "Your Location";
+  }
 
+  Future<void> loadData() async {
+
+    await storeUserLocation();
     await rh.populateStations();
+
     locationsToDisplay.addAll(rh.stations);
 
     setState(() {
       isLoading = false;
+      if (end != null) {
+        Future.delayed(Duration(milliseconds: 100), () {
+
+          showPageForSearchingTerminalLocations();
+        });
+      }
       fillMarkers();
     });
 
+
   }
+
 
   @override
   void initState() {
     super.initState();
+
+    if (widget.savedLocation != null){
+      end = widget.savedLocation!;
+      // showPageForSearchingTerminalLocations();
+      HomePageState? homePageState = context.findAncestorStateOfType<HomePageState>();
+      homePageState?.pages[0] = MapsPage(
+          key: PageStorageKey('Page1'),
+          savedLocation: null
+      );
+
+    }
     loadData();
-
-
-    _Tcontroller.addListener(() {
-      onChange();
-    });
-
     // listenToLocationChanges();
   }
 
-  void onChange() {
-    if (_sessionToken == null) {
-      setState(() {
-        _sessionToken = uuid.v4();
-      });
-    }
-    getSuggestions(_Tcontroller.text);
-  }
-
-  void getSuggestions(String input) async {
-    String kPlaces_API_key = "AIzaSyC5Y_qUAVEn3_mlCeDDTQdH0gqzLHCS-tg";
-    String baseURL = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
-    String request = '$baseURL?input=$input&types=(cities)&key=$kPlaces_API_key&sessiontoken=$_sessionToken';
-
-    var response = await http.get(Uri.parse(request));
-    var data = response.body.toString();
-
-    if (response.statusCode == 200) {
-      setState(() {
-
-        _placesList = jsonDecode(response.body.toString())['predictions'];
-      });
-    } else {
-      throw Exception('Failed to Load Data');
-    }
+  void updateSearchQuery(String query) {
+    setState(() {
+      List<String> data = _places.keys.toList();
+      _filteredData.clear();
+      _filteredData = data.where((element) =>
+          element.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+      print(_filteredData);
+    });
   }
 
   @override
@@ -710,7 +438,7 @@ class MapsPageState extends State<MapsPage> {
                   padding: EdgeInsets.all(10),
                   margin: EdgeInsets.fromLTRB(0, 80, 0, 0),
                   child: BusStopListView(
-                      busStops: locationsToDisplay.getRange(1, locationsToDisplay.length).toList(),
+                      busStops: locationsToDisplay,
                       onLocationSelected: onListRowSelected,
                   ),
                 ),
@@ -828,6 +556,23 @@ class BusStopListView extends StatelessWidget {
   final ValueChanged<LatLng> onLocationSelected;
   BusStopListView({required this.busStops,required this.onLocationSelected}) {}
 
+  Color getTileColor(int index){
+    if (busStops[index].isDestination){
+      return Color(0x1F82ED9F);
+
+    }else if(busStops[index].isStartingPoint){
+      return Color(0x104F1BEF);
+    }
+    else if(index > 0 && index < busStops.length){
+      if( !((this.busStops[index]!.isMetro && this.busStops[index + 1]!.isMetro) ||
+          (this.busStops[index]!.route_num == this.busStops[index + 1]!.route_num)) ){
+        return Color(0x1FF25757);
+      }
+    }
+    return Colors.white;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
@@ -838,9 +583,9 @@ class BusStopListView extends StatelessWidget {
 
             subtitle: Text(busStops[index].getStationTypesInString()),
             title: Text(busStops[index].name),
-            trailing: Icon(Icons.directions_bus),
+            trailing: Icon(Icons.directions_bus, color: Colors.redAccent,),
 
-            tileColor: Colors.white,
+            tileColor: getTileColor(index),
 
             onTap: () {
               onLocationSelected(LatLng(busStops[index].latts_longs.latitude, busStops[index].latts_longs.longitude));
@@ -872,7 +617,7 @@ void showActionSheet_On_Station_Start_Marker_Press(BuildContext context, String 
         style: TextStyle(fontSize: 20, color: Colors.black54),
       ),
       message: const Text(
-        'Do you want to save or open it on Google Maps?',
+        'Do you want to open it with Google Maps?',
         style: TextStyle(fontSize: 15, color: Colors.black54),
       ),
       cancelButton: CupertinoActionSheetAction(

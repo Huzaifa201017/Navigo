@@ -130,7 +130,7 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: 24),
 
                 SizedBox(
-                  width: double.infinity,
+                  width: 330,
                   child: MaterialButton(
                     onPressed: () async{
                       this.loginWithGoogle();
@@ -144,7 +144,6 @@ class _LoginPageState extends State<LoginPage> {
                           height: 45.0,
                           width: 30.0,
                           decoration: BoxDecoration(
-
                             image: DecorationImage(
                               image:AssetImage('assets/images/google.png'),
                               fit: BoxFit.cover,
