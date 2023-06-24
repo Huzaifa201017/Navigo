@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import 'Toast.dart';
 
@@ -80,23 +81,24 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
                 SizedBox(height: 24),
                 SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    child: Text('Sign Up'),
-                    onPressed: () {
-                      if (_formKey.currentState?.validate() ?? false) {
-                        // Perform sign up functionality
-                        FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
-                          Message().show("Registered Successfully!");
-                          Navigator.pop(context);
-                        }).onError((error, stackTrace) {
-                          print("Error ${error.toString()}");
-                          Message().show(error.toString());
-                        });
-                      }
-                    },
-                  ),
+                    width: double.infinity,
+                    child: CupertinoButton.filled(
+                      child: Text('Sign Up'),
+                      onPressed: () {
+                        if (_formKey.currentState?.validate() ?? false) {
+                          // Perform sign up functionality
+                          FirebaseAuth.instance.createUserWithEmailAndPassword(email: emailController.text, password: passwordController.text).then((value) {
+                            Message().show("Registered Successfully!");
+                            Navigator.pop(context);
+                          }).onError((error, stackTrace) {
+                            print("Error ${error.toString()}");
+                            Message().show(error.toString());
+                          });
+                        }
+                      },
+                    )
                 ),
+
               ],
             ),
           ),

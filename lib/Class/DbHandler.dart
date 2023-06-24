@@ -12,8 +12,10 @@ class DbHandler {
   var db = FirebaseFirestore.instance;
 
   Future<void> loadSavedPlaceToDb(String name,  String id, LatLng location) async{
+
     List<StopLocation> list = await fetchSavedPlaceFromDb(id);
-    for (int i = 0 ; i < list.length ; i++){
+
+    for (int i = 0 ; i < list.length ; i++) {
       if (list[i].latts_longs == location){
         Message().show("Already Saved!");
         return ;
@@ -36,20 +38,25 @@ class DbHandler {
 
     ).catchError((error) {
       // If the document doesn't exist, create a new one and add the array.
+      print("Yes");
       if (error.code == 'not-found') {
-        db.collection('Users').doc(id).set({
-          'savedPlaces': [
+        db.collection('Users').doc(id).set(
             {
-              'name': name,
-              'lattitude': location.latitude,
-              'longitude': location.longitude
+              'savedPlaces': [
+                {
+                  'name': name,
+                  'lattitude': location.latitude,
+                  'longitude': location.longitude
+                },
+              ]
             }
-          ]
-        });
+        );
       }
     });
     Message().show("Saved Successfully!");
   }
+
+
   Future<List<StopLocation>> fetchSavedPlaceFromDb(String id) async {
 
     final docRef = db.collection("Users").doc(id);
